@@ -74,6 +74,65 @@ export const imageUtils = {
     });
   },
 
+  // Optimize image for processing - handles both small and very large images
+  async optimizeForProcessing(file: File): Promise<{ file: File; wasOptimized: boolean }> {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      
+      img.onload = async () => {
+        const { width, height } = img;
+        const fileSizeMB = file.size / (1024 * 1024);
+        
+        // Determine if optimization is needed
+        const needsOptimization = (
+          width > 2048 || 
+          height > 2048 || 
+          fileSizeMB > 5 || 
+          file.type === 'image/png' // Convert PNG to JPEG for better compression
+        );
+        
+        if (!needsOptimization) {
+          resolve({ file, wasOptimized: false });
+          return;
+        }
+        
+        try {
+          // Optimize the image
+          let targetWidth = 1536; // Good balance for AI processing
+          let targetHeight = 1536;
+          let quality = 0.85;
+          
+          // For very large images, use more aggressive optimization
+          if (width > 4096 || height > 4096 || fileSizeMB > 20) {
+            targetWidth = 1024;
+            targetHeight = 1024;
+            quality = 0.8;
+          }
+          
+          // For smaller images, maintain original size but optimize compression
+          if (width <= 1536 && height <= 1536) {
+            targetWidth = width;
+            targetHeight = height;
+          }
+          
+          const optimizedBlob = await this.resizeImage(file, targetWidth, targetHeight, quality);
+          const optimizedFile = new File(
+            [optimizedBlob], 
+            file.name.replace(/\.[^/.]+$/, '.jpg'), // Change extension to jpg
+            { type: 'image/jpeg' }
+          );
+          
+          resolve({ file: optimizedFile, wasOptimized: true });
+        } catch (error) {
+          reject(new Error(`Failed to optimize image: ${error instanceof Error ? error.message : 'Unknown error'}`));
+        }
+      };
+      
+      img.onerror = () => reject(new Error('Failed to load image for optimization'));
+      img.src = URL.createObjectURL(file);
+    });
+  },
+
   // Strip EXIF data for privacy
   async stripExifData(file: File): Promise<Blob> {
     // For now, just convert to blob which removes EXIF
@@ -125,7 +184,7 @@ export const formatUtils = {
   // Generate filename
   generateFilename(labubuId: number, extension = 'jpg'): string {
     const timestamp = new Date().toISOString().split('T')[0];
-    const random = Math.random().toString(36).substr(2, 5);
+    const random = Math.random().toString(36).substring(2, 7);
     return `labubu_${labubuId}_${timestamp}_${random}.${extension}`;
   },
 };

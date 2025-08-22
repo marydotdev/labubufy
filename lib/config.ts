@@ -68,3 +68,47 @@ export const LABUBU_OPTIONS = [
 ] as const;
 
 export type LabubuOption = typeof LABUBU_OPTIONS[number];
+
+// Helper function to get Labubu image full URL
+export function getLabubuImageUrl(labubu_id: number): string {
+  const labubu = LABUBU_OPTIONS.find(l => l.id === labubu_id);
+  if (!labubu) {
+    throw new Error(`Labubu with ID ${labubu_id} not found`);
+  }
+
+  return getPublicUrl(labubu.image);
+}
+
+// Get public URL for any asset - works on Vercel and locally
+export function getPublicUrl(path: string): string {
+  // Priority 1: Explicit public URL from environment
+  if (process.env.NEXT_PUBLIC_APP_URL) {
+    return `${process.env.NEXT_PUBLIC_APP_URL}${path}`;
+  }
+
+  // Priority 2: Vercel deployment URL
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}${path}`;
+  }
+
+  // Priority 3: For development, use CDN if available
+  if (process.env.NEXT_PUBLIC_LABUBU_BASE_URL) {
+    const filename = path.split('/').pop();
+    return `${process.env.NEXT_PUBLIC_LABUBU_BASE_URL}/${filename}`;
+  }
+
+  // Priority 4: Fallback to actual Labubu image for development testing
+  if (path.includes('labubu')) {
+    // Use the provided Labubu image URL for all variants during development
+    return "https://replicate.delivery/pbxt/NZiSMWETTlodO9NDMVB0IOj0xk4Jr9gA3AXa7ExawGyJtr4o/Screenshot%202025-08-21%20at%201.10.10%E2%80%AFPM%20copy%202.png";
+  }
+
+  // Final fallback - this will fail for Replicate but works for local preview
+  return `http://localhost:3000${path}`;
+}
+
+// Helper function to get Labubu name
+export function getLabubuName(labubu_id: number): string {
+  const labubu = LABUBU_OPTIONS.find(l => l.id === labubu_id);
+  return labubu?.name || 'Classic Pink';
+}

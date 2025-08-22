@@ -154,8 +154,8 @@ export const fileValidator = {
       throw new ValidationError('No file selected');
     }
 
-    // Check file size
-    const maxSize = parseInt(process.env.NEXT_PUBLIC_MAX_FILE_SIZE || '10485760');
+    // Check file size - allow up to 100MB for large images
+    const maxSize = parseInt(process.env.NEXT_PUBLIC_MAX_FILE_SIZE || '104857600'); // 100MB
     if (file.size > maxSize) {
       throw new ValidationError(
         `File size too large. Maximum size is ${Math.round(maxSize / 1024 / 1024)}MB`,
@@ -178,13 +178,15 @@ export const fileValidator = {
       const img = new Image();
       
       img.onload = () => {
-        const minSize = 640;
+        const minSize = 256; // Reduced minimum size to handle smaller images
+        
         if (img.width < minSize || img.height < minSize) {
           reject(new ValidationError(
             `Image too small. Minimum size is ${minSize}x${minSize} pixels`,
             { width: img.width, height: img.height, minSize }
           ));
         } else {
+          // No maximum validation here - we'll handle large images with optimization
           resolve();
         }
       };

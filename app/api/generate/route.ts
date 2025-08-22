@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { retryHandler } from '@/lib/errors';
+import { getLabubuImageUrl, getLabubuName } from '@/lib/config';
+import { generationSessions } from '@/lib/session-store';
 
 interface GenerationRequest {
   image: string;
@@ -13,6 +15,7 @@ interface ReplicateResponse {
   error?: string;
   logs?: string;
 }
+
 
 export async function POST(request: NextRequest) {
   try {
@@ -30,20 +33,18 @@ export async function POST(request: NextRequest) {
       // For development, return a mock response
       return NextResponse.json({
         success: true,
-        prediction_id: `mock_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        prediction_id: `mock_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
         status: 'starting',
         mock: true,
         labubu_id,
       });
     }
 
-    // Get Labubu reference image (for future use in two-stage generation)
-    // const labubuImageUrl = getLabubuImage(labubu_id);
+    // Get Labubu reference image URL
+    const labubuImageUrl = getLabubuImageUrl(labubu_id);
 
-    // Use retry handler for API calls
-    const result = await retryHandler.withRetry(async () => {
-      // For now, we'll use a single model approach
-      // In production, you might want to use a two-stage approach as originally planned
+    // STEP 1: Merge user image with Labubu image using tool-merge-images
+    const step1Result = await retryHandler.withRetry(async () => {
       const response = await fetch('https://api.replicate.com/v1/predictions', {
         method: 'POST',
         headers: {
@@ -51,34 +52,48 @@ export async function POST(request: NextRequest) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          // Using a generic image editing model - replace with actual model version
-          version: process.env.IMAGE_GENERATION_MODEL || 'stability-ai/stable-diffusion:27b93a2413e7f36cd83da926f3656280b2931564ff050bf9575f1fdf9bcd7478',
+          version: process.env.TOOL_MERGE_IMAGES_VERSION || 'zsxkib/tool-merge-images:d933c8352ca7270ddf7c9c816e1c872f6114675ce43c8d70c924a3347bbeef05',
           input: {
-            image: image,
-            prompt: `A person naturally holding a cute ${getLabubuName(labubu_id)} Labubu doll, photorealistic, natural lighting, casual pose`,
-            negative_prompt: 'blurry, low quality, distorted, unnatural pose, fake looking',
-            num_inference_steps: 20,
-            guidance_scale: 7.5,
-            strength: 0.7,
+            images: [image, labubuImageUrl],
+            orientation: 'horizontal',
+            resize_strategy: 'reduce_larger',
+            alignment: 'center',
+            border_thickness: 0,
+            border_color: '#ffffff',
+            keep_aspect_ratio: true,
+            output_format: 'webp',
+            output_quality: 90
           },
         }),
       });
 
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(`Replicate API error: ${response.status} - ${errorText}`);
+        throw new Error(`Step 1 - Image merge error: ${response.status} - ${errorText}`);
       }
 
       return response.json();
     }, 3);
 
-    const replicateResult = result as ReplicateResponse;
+    const step1ReplicateResult = step1Result as ReplicateResponse;
 
+    // Store the session information for status tracking
+    const sessionId = step1ReplicateResult.id;
+    generationSessions.set(sessionId, {
+      step1_prediction_id: step1ReplicateResult.id,
+      labubu_id,
+      user_image: image,
+      labubu_name: getLabubuName(labubu_id),
+      status: 'step1_processing',
+      created_at: Date.now()
+    });
+    
     return NextResponse.json({
       success: true,
-      prediction_id: replicateResult.id,
-      status: replicateResult.status,
-      output: replicateResult.output,
+      prediction_id: sessionId,
+      status: 'step1_processing',
+      step: 1,
+      total_steps: 2,
       labubu_id,
     });
 
@@ -115,16 +130,3 @@ export async function POST(request: NextRequest) {
 }
 
 
-// Helper function to get Labubu name by ID
-function getLabubuName(labubu_id: number): string {
-  const labubuNames: Record<number, string> = {
-    1: 'pink',
-    2: 'blue',
-    3: 'yellow',
-    4: 'purple',
-    5: 'green',
-    6: 'orange',
-  };
-
-  return labubuNames[labubu_id] || 'pink';
-}
