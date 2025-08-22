@@ -31,9 +31,12 @@ export function ImageUpload({ onImageUpload, onError, className }: ImageUploadPr
       fileValidator.validateFile(file);
       await fileValidator.validateImageDimensions(file);
 
+      // Optimize image for processing
+      const { file: optimizedFile } = await imageUtils.optimizeForProcessing(file);
+
       // Convert to preview
-      const previewUrl = await imageUtils.fileToBase64(file);
-      onImageUpload(file, previewUrl);
+      const previewUrl = await imageUtils.fileToBase64(optimizedFile);
+      onImageUpload(optimizedFile, previewUrl);
 
     } catch (err) {
       const appError = errorHandler.parseError(err);
@@ -54,8 +57,12 @@ export function ImageUpload({ onImageUpload, onError, className }: ImageUploadPr
         try {
           fileValidator.validateFile(file);
           await fileValidator.validateImageDimensions(file);
-          const previewUrl = await imageUtils.fileToBase64(file);
-          onImageUpload(file, previewUrl);
+          
+          // Optimize image for processing
+          const { file: optimizedFile } = await imageUtils.optimizeForProcessing(file);
+          
+          const previewUrl = await imageUtils.fileToBase64(optimizedFile);
+          onImageUpload(optimizedFile, previewUrl);
         } catch (err) {
           const appError = errorHandler.parseError(err);
           onError(errorHandler.getUserMessage(appError));
@@ -130,8 +137,11 @@ export function ImageUpload({ onImageUpload, onError, className }: ImageUploadPr
         // Validate dimensions
         await fileValidator.validateImageDimensions(file);
 
-        const previewUrl = await imageUtils.fileToBase64(file);
-        onImageUpload(file, previewUrl);
+        // Optimize image for processing
+        const { file: optimizedFile } = await imageUtils.optimizeForProcessing(file);
+
+        const previewUrl = await imageUtils.fileToBase64(optimizedFile);
+        onImageUpload(optimizedFile, previewUrl);
         stopCamera();
 
       } catch (err) {
@@ -221,7 +231,7 @@ export function ImageUpload({ onImageUpload, onError, className }: ImageUploadPr
           Drop image here or click to upload
         </p>
         <p className="text-gray-400 text-xs mt-1">
-          JPG, PNG, WebP up to 10MB
+          JPG, PNG, WebP up to 100MB
         </p>
       </div>
 
