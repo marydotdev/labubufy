@@ -17,7 +17,7 @@ export function ImageUpload({ onImageUpload, onError, className }: ImageUploadPr
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  
+
   const [showCamera, setShowCamera] = useState(false);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [isCameraLoading, setIsCameraLoading] = useState(false);
@@ -34,7 +34,7 @@ export function ImageUpload({ onImageUpload, onError, className }: ImageUploadPr
       // Convert to preview
       const previewUrl = await imageUtils.fileToBase64(file);
       onImageUpload(file, previewUrl);
-      
+
     } catch (err) {
       const appError = errorHandler.parseError(err);
       onError(errorHandler.getUserMessage(appError));
@@ -75,17 +75,17 @@ export function ImageUpload({ onImageUpload, onError, className }: ImageUploadPr
     setIsCameraLoading(true);
     try {
       const mediaStream = await navigator.mediaDevices.getUserMedia({
-        video: { 
+        video: {
           facingMode: 'user',
           width: { ideal: 1080 },
           height: { ideal: 1080 }
         }
       });
-      
+
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
       }
-      
+
       setStream(mediaStream);
       setShowCamera(true);
     } catch {
@@ -126,14 +126,14 @@ export function ImageUpload({ onImageUpload, onError, className }: ImageUploadPr
       try {
         // Create file from blob
         const file = new File([blob], 'camera-photo.jpg', { type: 'image/jpeg' });
-        
+
         // Validate dimensions
         await fileValidator.validateImageDimensions(file);
-        
+
         const previewUrl = await imageUtils.fileToBase64(file);
         onImageUpload(file, previewUrl);
         stopCamera();
-        
+
       } catch (err) {
         const appError = errorHandler.parseError(err);
         onError(errorHandler.getUserMessage(appError));
@@ -147,17 +147,17 @@ export function ImageUpload({ onImageUpload, onError, className }: ImageUploadPr
     setTimeout(async () => {
       try {
         const mediaStream = await navigator.mediaDevices.getUserMedia({
-          video: { 
+          video: {
             facingMode: stream?.getVideoTracks()[0]?.getSettings().facingMode === 'user' ? 'environment' : 'user',
             width: { ideal: 1080 },
             height: { ideal: 1080 }
           }
         });
-        
+
         if (videoRef.current) {
           videoRef.current.srcObject = mediaStream;
         }
-        
+
         setStream(mediaStream);
       } catch {
         onError('Unable to switch camera');
@@ -175,7 +175,7 @@ export function ImageUpload({ onImageUpload, onError, className }: ImageUploadPr
           className="w-full h-full object-cover rounded-lg"
         />
         <canvas ref={canvasRef} className="hidden" />
-        
+
         {/* Camera controls */}
         <div className="absolute inset-x-0 bottom-4 flex justify-center gap-4">
           <Button
@@ -186,14 +186,14 @@ export function ImageUpload({ onImageUpload, onError, className }: ImageUploadPr
           >
             <X className="h-4 w-4" />
           </Button>
-          
+
           <Button
             onClick={capturePhoto}
             className="w-16 h-16 rounded-full bg-white/90 hover:bg-white border-4 border-white/50"
           >
             <div className="w-12 h-12 rounded-full bg-white" />
           </Button>
-          
+
           <Button
             variant="outline"
             size="sm"
@@ -208,10 +208,10 @@ export function ImageUpload({ onImageUpload, onError, className }: ImageUploadPr
   }
 
   return (
-    <div className={cn("w-full h-full", className)}>
+    <div className={cn("w-full h-full flex flex-col items-center justify-center", className)}>
       {/* Upload area */}
       <div
-        className="w-48 h-48 sm:w-56 sm:h-56 bg-gray-200 rounded-lg flex flex-col items-center justify-center border-2 border-dashed border-gray-400 hover:border-gray-500 transition-colors cursor-pointer"
+        className="mx-auto w-48 h-48 sm:w-56 sm:h-56 bg-gray-200 rounded-lg flex flex-col items-center justify-center border-2 border-dashed border-gray-400 hover:border-gray-500 transition-colors cursor-pointer"
         onDragOver={handleDragOver}
         onDrop={handleDrop}
         onClick={() => fileInputRef.current?.click()}
@@ -234,7 +234,7 @@ export function ImageUpload({ onImageUpload, onError, className }: ImageUploadPr
           <Upload className="h-4 w-4 mr-2" />
           Choose Photo
         </Button>
-        
+
         {deviceUtils.isMobile() && deviceUtils.supportsCamera() && (
           <Button
             variant="outline"
