@@ -120,7 +120,7 @@ export default function LabubufyApp() {
 
   const handleDownload = () => {
     if (!generatedBlob || selectedLabubu === null) return;
-    
+
     const filename = formatUtils.generateFilename(selectedLabubu);
     urlUtils.downloadBlob(generatedBlob, filename);
   };
@@ -150,7 +150,7 @@ export default function LabubufyApp() {
       {/* Header */}
       <header className="bg-white border-b border-gray-200 px-4 py-3">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
-          <h1 className="text-xl sm:text-2xl font-bold text-purple-600">Labubufy</h1>
+          <h1 className="font-zubilo text-xl sm:text-2xl font-bold text-purple-600">Labubufy</h1>
           <Button
             variant="outline"
             size="sm"
@@ -234,7 +234,7 @@ export default function LabubufyApp() {
           {/* Right Panel - Upload/Result */}
           <div className="w-full sm:w-1/2 bg-gray-100 flex items-center justify-center p-4 sm:p-6">
             {isGenerating ? (
-              <GenerationProgress 
+              <GenerationProgress
                 progress={generationProgress}
                 estimatedTime={estimatedTime}
                 status={generationStatus}
