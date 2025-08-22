@@ -1,6 +1,6 @@
 "use client";
 
-import type React from "react";
+import React from "react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Download, Share2, History } from "lucide-react";
@@ -9,8 +9,10 @@ import { ImageUpload, ImagePreview } from "@/components/image-upload";
 import { GenerationProgress } from "@/components/loading-states";
 import { HistoryGallery } from "@/components/history-gallery";
 import { errorHandler } from "@/lib/errors";
-import { imageUtils, formatUtils, deviceUtils, urlUtils } from "@/lib/utils";
+import { imageUtils, formatUtils, urlUtils } from "@/lib/utils";
 import { imageStorage } from "@/lib/storage";
+import { generationService } from "@/lib/generation";
+import { sharingService } from "@/lib/sharing";
 
 export default function LabubufyApp() {
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
@@ -20,8 +22,20 @@ export default function LabubufyApp() {
   const [generatedBlob, setGeneratedBlob] = useState<Blob | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationProgress, setGenerationProgress] = useState(0);
+  const [estimatedTime, setEstimatedTime] = useState<number>(0);
+  const [generationStatus, setGenerationStatus] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
+  const [currentPredictionId, setCurrentPredictionId] = useState<string | null>(null);
+
+  // Cleanup on component unmount
+  React.useEffect(() => {
+    return () => {
+      if (currentPredictionId) {
+        generationService.stopPolling(currentPredictionId);
+      }
+    };
+  }, [currentPredictionId]);
 
   const handleImageUpload = (file: File, previewUrl: string) => {
     setUploadedFile(file);
@@ -47,80 +61,61 @@ export default function LabubufyApp() {
       setError(null);
       setIsGenerating(true);
       setGenerationProgress(0);
+      setEstimatedTime(0);
+      setGenerationStatus('starting');
 
       // Convert file to base64 for API
       const imageBase64 = await imageUtils.fileToBase64(uploadedFile);
 
-      // Call generation API
-      const response = await fetch('/api/generate', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+      // Use the generation service
+      const result = await generationService.generateWithPolling(
+        {
           image: imageBase64,
           labubu_id: selectedLabubu,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`Generation failed: ${response.statusText}`);
-      }
-
-      const result = await response.json();
-      
-      if (result.error) {
-        throw new Error(result.error);
-      }
-
-      // Simulate progress updates
-      const progressInterval = setInterval(() => {
-        setGenerationProgress(prev => {
-          if (prev >= 90) {
-            clearInterval(progressInterval);
-            return 90;
-          }
-          return prev + Math.random() * 15;
-        });
-      }, 300);
-
-      // For now, simulate the result since we don't have real API keys
-      // In production, this would poll the status endpoint
-      setTimeout(async () => {
-        clearInterval(progressInterval);
-        setGenerationProgress(100);
-        
-        try {
-          // Simulate a generated image URL
-          const mockImageUrl = "/magical-labubu-photo.png";
-          setGeneratedImage(mockImageUrl);
-
-          // Create mock blob for download
-          const mockBlob = new Blob([uploadedFile], { type: 'image/jpeg' });
-          setGeneratedBlob(mockBlob);
-
-          // Save to history
-          await imageStorage.saveImage(uploadedFile, mockBlob, selectedLabubu);
-          
-          setTimeout(() => {
-            setIsGenerating(false);
-            setGenerationProgress(0);
-          }, 500);
-        } catch (err) {
-          const appError = errorHandler.parseError(err);
-          setError(errorHandler.getUserMessage(appError));
-          setIsGenerating(false);
-          setGenerationProgress(0);
+        },
+        (progress, estimatedTime, status) => {
+          setGenerationProgress(progress);
+          setEstimatedTime(estimatedTime || 0);
+          setGenerationStatus(status || 'processing');
         }
-      }, 3000);
+      );
+
+      // Generation completed successfully
+      setGeneratedImage(result.imageUrl);
+      setGeneratedBlob(result.blob);
+
+      // Save to history
+      await imageStorage.saveImage(uploadedFile, result.blob, selectedLabubu);
+
+      // Reset generation state
+      setIsGenerating(false);
+      setGenerationProgress(0);
+      setEstimatedTime(0);
+      setGenerationStatus('');
+      setCurrentPredictionId(null);
 
     } catch (err) {
       const appError = errorHandler.parseError(err);
       setError(errorHandler.getUserMessage(appError));
       setIsGenerating(false);
       setGenerationProgress(0);
+      setEstimatedTime(0);
+      setGenerationStatus('');
+      setCurrentPredictionId(null);
       errorHandler.logError(appError, { action: 'image_generation', labubu_id: selectedLabubu });
     }
+  };
+
+  // Cancel generation
+  const handleCancelGeneration = () => {
+    if (currentPredictionId) {
+      generationService.stopPolling(currentPredictionId);
+    }
+    setIsGenerating(false);
+    setGenerationProgress(0);
+    setEstimatedTime(0);
+    setGenerationStatus('');
+    setCurrentPredictionId(null);
   };
 
   const handleDownload = () => {
@@ -131,23 +126,22 @@ export default function LabubufyApp() {
   };
 
   const handleShare = async () => {
-    if (!generatedBlob) return;
+    if (!generatedBlob || selectedLabubu === null) return;
 
     try {
-      if (deviceUtils.supportsWebShare()) {
-        await navigator.share({
-          title: 'My Labubu Photo',
-          text: 'Check out my awesome Labubu photo!',
-          files: [new File([generatedBlob], 'labubu-photo.jpg', { type: 'image/jpeg' })]
-        });
-      } else {
-        // Fallback to copying image to clipboard or showing share modal
-        // For now, just download
-        handleDownload();
+      const filename = sharingService.generateShareFilename(selectedLabubu);
+      const result = await sharingService.shareImage(generatedBlob, filename, {
+        title: 'My Labubu Photo',
+        text: 'Check out my awesome Labubu photo created with Labubufy!'
+      });
+
+      if (!result.success && result.error) {
+        console.log('Share failed:', result.error);
       }
-    } catch {
-      // User cancelled share or error occurred
-      console.log('Share cancelled or failed');
+    } catch (error) {
+      console.error('Share error:', error);
+      // Fallback to download
+      handleDownload();
     }
   };
 
@@ -240,7 +234,12 @@ export default function LabubufyApp() {
           {/* Right Panel - Upload/Result */}
           <div className="w-full sm:w-1/2 bg-gray-100 flex items-center justify-center p-4 sm:p-6">
             {isGenerating ? (
-              <GenerationProgress progress={generationProgress} />
+              <GenerationProgress 
+                progress={generationProgress}
+                estimatedTime={estimatedTime}
+                status={generationStatus}
+                onCancel={handleCancelGeneration}
+              />
             ) : generatedImage ? (
               <ImagePreview
                 imageUrl={generatedImage}

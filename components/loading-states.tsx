@@ -43,10 +43,19 @@ export function HistoryGallerySkeleton() {
 // Generation progress indicator
 interface GenerationProgressProps {
   progress?: number;
+  estimatedTime?: number;
+  status?: string;
+  onCancel?: () => void;
   className?: string;
 }
 
-export function GenerationProgress({ progress = 0, className }: GenerationProgressProps) {
+export function GenerationProgress({ 
+  progress = 0, 
+  estimatedTime = 0, 
+  status = '', 
+  onCancel, 
+  className 
+}: GenerationProgressProps) {
   return (
     <div className={cn("flex flex-col items-center justify-center p-8", className)}>
       {/* Animated sparkles */}
@@ -65,7 +74,10 @@ export function GenerationProgress({ progress = 0, className }: GenerationProgre
           Creating your Labubu photo...
         </h3>
         <p className="text-sm text-gray-600">
-          This might take up to 30 seconds
+          {status === 'starting' && 'Getting ready...'}
+          {status === 'processing' && estimatedTime > 0 && `About ${estimatedTime} seconds remaining`}
+          {status === 'processing' && estimatedTime === 0 && 'Processing your image...'}
+          {!status && 'This might take up to 30 seconds'}
         </p>
         
         {/* Progress bar */}
@@ -79,6 +91,16 @@ export function GenerationProgress({ progress = 0, className }: GenerationProgre
         <p className="text-xs text-gray-500">
           {progress > 0 ? `${Math.round(progress)}% complete` : 'Initializing...'}
         </p>
+
+        {/* Cancel button */}
+        {onCancel && (
+          <button
+            onClick={onCancel}
+            className="mt-4 px-4 py-2 text-sm text-gray-600 hover:text-gray-800 transition-colors"
+          >
+            Cancel
+          </button>
+        )}
       </div>
     </div>
   );
