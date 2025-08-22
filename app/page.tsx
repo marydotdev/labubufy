@@ -1,103 +1,202 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import type React from "react";
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Upload, Download, Share2 } from "lucide-react";
+
+const labubuOptions = [
+  {
+    id: 1,
+    name: "Classic Pink",
+    color: "bg-pink-400",
+    image: "/cute-pink-labubu-doll-with-bow.png",
+  },
+  {
+    id: 2,
+    name: "Blue Dreamer",
+    color: "bg-blue-400",
+    image: "/blue-sleepy-labubu.png",
+  },
+  {
+    id: 3,
+    name: "Yellow Sunshine",
+    color: "bg-yellow-400",
+    image: "/happy-yellow-labubu.png",
+  },
+  {
+    id: 4,
+    name: "Purple Magic",
+    color: "bg-purple-400",
+    image: "/mystical-purple-labubu.png",
+  },
+  {
+    id: 5,
+    name: "Green Forest",
+    color: "bg-green-400",
+    image: "/nature-green-labubu.png",
+  },
+  {
+    id: 6,
+    name: "Orange Sunset",
+    color: "bg-orange-400",
+    image: "/warm-orange-labubu.png",
+  },
+];
+
+export default function LabubufyApp() {
+  const [uploadedImage, setUploadedImage] = useState<string | null>(null);
+  const [selectedLabubu, setSelectedLabubu] = useState<number | null>(null);
+  const [generatedImage, setGeneratedImage] = useState<string | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setUploadedImage(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleGenerate = async () => {
+    if (!uploadedImage || selectedLabubu === null) return;
+
+    setIsGenerating(true);
+    // Simulate AI generation delay
+    setTimeout(() => {
+      setGeneratedImage("/magical-labubu-photo.png");
+      setIsGenerating(false);
+    }, 3000);
+  };
+
+  const handleDownload = () => {
+    const link = document.createElement("a");
+    link.href = generatedImage || "";
+    link.download = "my-labubu-photo.jpg";
+    link.click();
+  };
+
   return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+    <div className="min-h-screen flex items-center justify-center p-2 sm:p-4">
+      <div className="max-w-6xl w-full border-2 border-red-200 bg-white rounded-lg overflow-hidden h-[90vh]">
+        <div className="flex flex-col-reverse sm:flex-row h-full">
+          {/* Left Panel - Labubu Selection */}
+          <div className="w-full sm:w-1/2 p-4 sm:p-6 sm:border-r border-gray-200 flex flex-col">
+            <div className="w-full h-fit max-w-sm mx-auto flex-1 flex flex-col justify-center">
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+              {/* Labubu Grid - 2x3 colorful rectangles */}
+              <div className="grid grid-cols-3 sm:grid-cols-2 gap-3 sm:gap-4 mb-6 flex-shrink-0">
+                {labubuOptions.map((labubu) => (
+                  <div
+                    key={labubu.id}
+                    className={`aspect-square ${
+                      labubu.color
+                    } rounded-lg cursor-pointer border-2 sm:border-3 transition-all ${
+                      selectedLabubu === labubu.id
+                        ? "border-black"
+                        : "border-transparent"
+                    }`}
+                    onClick={() => setSelectedLabubu(labubu.id)}
+                  >
+                    <div className="w-full h-full flex items-center justify-center">
+                      <img
+                        src={labubu.image || "/placeholder.svg"}
+                        alt={labubu.name}
+                        className="w-12 h-12 sm:w-16 sm:h-16 object-cover"
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Purple buttons underneath */}
+              <div className="space-y-3 sm:space-y-4 flex-shrink-0">
+                <Button
+                  className="w-full bg-purple-500 hover:bg-purple-600 text-white py-4 sm:py-5 text-sm sm:text-base"
+                  onClick={handleGenerate}
+                  disabled={
+                    !uploadedImage || selectedLabubu === null || isGenerating
+                  }
+                >
+                  {isGenerating ? "Generating..." : "Generate Photo"}
+                </Button>
+
+                {generatedImage && (
+                  <div className="flex gap-3 sm:gap-4">
+                    <Button
+                      variant="outline"
+                      className="flex-1 border-purple-500 text-purple-500 hover:bg-purple-50 py-3 sm:py-4 bg-transparent text-sm"
+                      onClick={handleDownload}
+                    >
+                      <Download className="h-4 w-4 mr-2" />
+                      Download
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="flex-1 border-purple-500 text-purple-500 hover:bg-purple-50 py-3 sm:py-4 bg-transparent text-sm"
+                    >
+                      <Share2 className="h-4 w-4 mr-2" />
+                      Share
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Right Panel - Upload/Result */}
+          <div className="w-full sm:w-1/2 bg-gray-100 flex items-center justify-center p-4 sm:p-6">
+            {generatedImage ? (
+              <div className="text-center">
+                <img
+                  src={generatedImage || "/placeholder.svg"}
+                  alt="Generated"
+                  className="max-w-full max-h-[30vh] sm:max-h-[40vh] object-contain rounded-lg shadow-lg"
+                />
+              </div>
+            ) : uploadedImage ? (
+              <div className="text-center space-y-4">
+                <img
+                  src={uploadedImage || "/placeholder.svg"}
+                  alt="Uploaded"
+                  className="max-w-full max-h-[30vh] sm:max-h-[40vh] object-contain rounded-lg shadow-lg"
+                />
+                <Button
+                  variant="outline"
+                  onClick={() => setUploadedImage(null)}
+                  className="bg-white"
+                >
+                  Choose Different Photo
+                </Button>
+              </div>
+            ) : (
+              <div className="text-center">
+                <div className="w-48 h-48 sm:w-56 sm:h-56 bg-gray-200 rounded-lg flex items-center justify-center border-2 border-dashed border-gray-400 mb-4">
+                  <div className="text-center">
+                    <Upload className="h-10 w-10 sm:h-12 sm:w-12 text-gray-400 mx-auto mb-3 sm:mb-4" />
+                    <p className="text-gray-500 text-sm sm:text-base">Upload your photo</p>
+                  </div>
+                </div>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  className="hidden"
+                  id="photo-upload"
+                />
+                <label htmlFor="photo-upload">
+                  <Button className="cursor-pointer bg-gray-800 hover:bg-gray-900 text-sm sm:text-base px-6 py-3">
+                    Choose Photo
+                  </Button>
+                </label>
+              </div>
+            )}
+          </div>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+      </div>
     </div>
   );
 }
