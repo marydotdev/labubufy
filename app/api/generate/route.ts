@@ -83,12 +83,12 @@ export async function POST(request: NextRequest) {
 // Helper function to get Labubu image URL by ID
 function getLabubuImage(labubu_id: number): string {
   const labubuImages: Record<number, string> = {
-    1: '/labubu-images/pink-labubu.png',
-    2: '/labubu-images/blue-labubu.png',
-    3: '/labubu-images/yellow-labubu.png',
-    4: '/labubu-images/purple-labubu.png',
-    5: '/labubu-images/green-labubu.png',
-    6: '/labubu-images/orange-labubu.png',
+    1: '/labubu-images/labubu1.png',
+    2: '/labubu-images/labubu2.png',
+    3: '/labubu-images/labubu3.png',
+    4: '/labubu-images/labubu4.png',
+    5: '/labubu-images/labubu5.png',
+    6: '/labubu-images/labubu6.png',
   };
 
   return labubuImages[labubu_id] || labubuImages[1];

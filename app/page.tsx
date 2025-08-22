@@ -3,9 +3,12 @@
 import type React from "react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Upload, Download, Share2, History } from "lucide-react";
-import { LABUBU_OPTIONS } from "@/lib/config";
-import { fileValidator, errorHandler, AppError } from "@/lib/errors";
+import { Download, Share2, History } from "lucide-react";
+import { LabubuSelection } from "@/components/labubu-selection";
+import { ImageUpload, ImagePreview } from "@/components/image-upload";
+import { GenerationProgress } from "@/components/loading-states";
+import { HistoryGallery } from "@/components/history-gallery";
+import { errorHandler } from "@/lib/errors";
 import { imageUtils, formatUtils, deviceUtils, urlUtils } from "@/lib/utils";
 import { imageStorage } from "@/lib/storage";
 
@@ -16,30 +19,25 @@ export default function LabubufyApp() {
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [generatedBlob, setGeneratedBlob] = useState<Blob | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [error, setError] = useState<AppError | null>(null);
+  const [generationProgress, setGenerationProgress] = useState(0);
+  const [error, setError] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
 
-  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
+  const handleImageUpload = (file: File, previewUrl: string) => {
+    setUploadedFile(file);
+    setUploadedImage(previewUrl);
+    setError(null);
+  };
 
-    try {
-      setError(null);
-      
-      // Validate file
-      fileValidator.validateFile(file);
-      await fileValidator.validateImageDimensions(file);
+  const handleImageRemove = () => {
+    setUploadedFile(null);
+    setUploadedImage(null);
+    setGeneratedImage(null);
+    setGeneratedBlob(null);
+  };
 
-      // Convert to preview
-      const previewUrl = await imageUtils.fileToBase64(file);
-      setUploadedImage(previewUrl);
-      setUploadedFile(file);
-      
-    } catch (err) {
-      const appError = errorHandler.parseError(err);
-      setError(appError);
-      errorHandler.logError(appError, { action: 'file_upload' });
-    }
+  const handleUploadError = (errorMessage: string) => {
+    setError(errorMessage);
   };
 
   const handleGenerate = async () => {
@@ -48,6 +46,7 @@ export default function LabubufyApp() {
     try {
       setError(null);
       setIsGenerating(true);
+      setGenerationProgress(0);
 
       // Convert file to base64 for API
       const imageBase64 = await imageUtils.fileToBase64(uploadedFile);
@@ -74,9 +73,23 @@ export default function LabubufyApp() {
         throw new Error(result.error);
       }
 
+      // Simulate progress updates
+      const progressInterval = setInterval(() => {
+        setGenerationProgress(prev => {
+          if (prev >= 90) {
+            clearInterval(progressInterval);
+            return 90;
+          }
+          return prev + Math.random() * 15;
+        });
+      }, 300);
+
       // For now, simulate the result since we don't have real API keys
       // In production, this would poll the status endpoint
       setTimeout(async () => {
+        clearInterval(progressInterval);
+        setGenerationProgress(100);
+        
         try {
           // Simulate a generated image URL
           const mockImageUrl = "/magical-labubu-photo.png";
@@ -89,18 +102,23 @@ export default function LabubufyApp() {
           // Save to history
           await imageStorage.saveImage(uploadedFile, mockBlob, selectedLabubu);
           
-          setIsGenerating(false);
+          setTimeout(() => {
+            setIsGenerating(false);
+            setGenerationProgress(0);
+          }, 500);
         } catch (err) {
           const appError = errorHandler.parseError(err);
-          setError(appError);
+          setError(errorHandler.getUserMessage(appError));
           setIsGenerating(false);
+          setGenerationProgress(0);
         }
       }, 3000);
 
     } catch (err) {
       const appError = errorHandler.parseError(err);
-      setError(appError);
+      setError(errorHandler.getUserMessage(appError));
       setIsGenerating(false);
+      setGenerationProgress(0);
       errorHandler.logError(appError, { action: 'image_generation', labubu_id: selectedLabubu });
     }
   };
@@ -156,15 +174,13 @@ export default function LabubufyApp() {
         <div className="bg-red-50 border-l-4 border-red-400 p-4 mx-4 mt-4">
           <div className="flex">
             <div className="ml-3">
-              <p className="text-sm text-red-700">{errorHandler.getUserMessage(error)}</p>
-              {error.retryable && (
-                <button
-                  onClick={() => setError(null)}
-                  className="mt-2 text-sm text-red-600 underline hover:text-red-500"
-                >
-                  Dismiss
-                </button>
-              )}
+              <p className="text-sm text-red-700">{error}</p>
+              <button
+                onClick={() => setError(null)}
+                className="mt-2 text-sm text-red-600 underline hover:text-red-500"
+              >
+                Dismiss
+              </button>
             </div>
           </div>
         </div>
@@ -178,30 +194,12 @@ export default function LabubufyApp() {
           <div className="w-full sm:w-1/2 p-4 sm:p-6 sm:border-r border-gray-200 flex flex-col">
             <div className="w-full h-fit max-w-sm mx-auto flex-1 flex flex-col justify-center">
 
-              {/* Labubu Grid - 2x3 colorful rectangles */}
-              <div className="grid grid-cols-3 sm:grid-cols-2 gap-3 sm:gap-4 mb-6 flex-shrink-0">
-                {LABUBU_OPTIONS.map((labubu) => (
-                  <div
-                    key={labubu.id}
-                    className={`aspect-square ${
-                      labubu.color
-                    } rounded-lg cursor-pointer border-2 sm:border-3 transition-all ${
-                      selectedLabubu === labubu.id
-                        ? "border-black"
-                        : "border-transparent"
-                    }`}
-                    onClick={() => setSelectedLabubu(labubu.id)}
-                  >
-                    <div className="w-full h-full flex items-center justify-center">
-                      <img
-                        src={labubu.image || "/placeholder.svg"}
-                        alt={labubu.name}
-                        className="w-12 h-12 sm:w-16 sm:h-16 object-cover"
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
+              {/* Labubu Selection Grid */}
+              <LabubuSelection
+                selectedLabubu={selectedLabubu}
+                onSelect={setSelectedLabubu}
+                className="mb-6 flex-shrink-0"
+              />
 
               {/* Purple buttons underneath */}
               <div className="space-y-3 sm:space-y-4 flex-shrink-0">
@@ -241,55 +239,34 @@ export default function LabubufyApp() {
 
           {/* Right Panel - Upload/Result */}
           <div className="w-full sm:w-1/2 bg-gray-100 flex items-center justify-center p-4 sm:p-6">
-            {generatedImage ? (
-              <div className="text-center">
-                <img
-                  src={generatedImage || "/placeholder.svg"}
-                  alt="Generated"
-                  className="max-w-full max-h-[30vh] sm:max-h-[40vh] object-contain rounded-lg shadow-lg"
-                />
-              </div>
+            {isGenerating ? (
+              <GenerationProgress progress={generationProgress} />
+            ) : generatedImage ? (
+              <ImagePreview
+                imageUrl={generatedImage}
+                onRemove={handleImageRemove}
+              />
             ) : uploadedImage ? (
-              <div className="text-center space-y-4">
-                <img
-                  src={uploadedImage || "/placeholder.svg"}
-                  alt="Uploaded"
-                  className="max-w-full max-h-[30vh] sm:max-h-[40vh] object-contain rounded-lg shadow-lg"
-                />
-                <Button
-                  variant="outline"
-                  onClick={() => setUploadedImage(null)}
-                  className="bg-white"
-                >
-                  Choose Different Photo
-                </Button>
-              </div>
+              <ImagePreview
+                imageUrl={uploadedImage}
+                onRemove={handleImageRemove}
+              />
             ) : (
-              <div className="text-center">
-                <div className="w-48 h-48 sm:w-56 sm:h-56 bg-gray-200 rounded-lg flex items-center justify-center border-2 border-dashed border-gray-400 mb-4">
-                  <div className="text-center">
-                    <Upload className="h-10 w-10 sm:h-12 sm:w-12 text-gray-400 mx-auto mb-3 sm:mb-4" />
-                    <p className="text-gray-500 text-sm sm:text-base">Upload your photo</p>
-                  </div>
-                </div>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageUpload}
-                  className="hidden"
-                  id="photo-upload"
-                />
-                <label htmlFor="photo-upload">
-                  <Button className="cursor-pointer bg-gray-800 hover:bg-gray-900 text-sm sm:text-base px-6 py-3">
-                    Choose Photo
-                  </Button>
-                </label>
-              </div>
+              <ImageUpload
+                onImageUpload={handleImageUpload}
+                onError={handleUploadError}
+              />
             )}
           </div>
           </div>
         </div>
       </div>
+
+      {/* History Gallery Modal */}
+      <HistoryGallery
+        isOpen={showHistory}
+        onClose={() => setShowHistory(false)}
+      />
     </div>
   );
 }
