@@ -25,7 +25,7 @@ export function LabubuSelection({
     <div className={cn("w-full", className)}>
       {/* Drawer-like tabs */}
       <div className="mb-4">
-        <div className="flex border border-black rounded-lg p-1 max-w-xs mx-auto mb-2 bg-white">
+        <div className="flex border border-black rounded-lg p-1 max-w-sm mx-auto mb-2 bg-white">
           <button
             onClick={() => setActiveTab("dolls")}
             className={cn(

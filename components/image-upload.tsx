@@ -282,7 +282,7 @@ export function ImagePreview({ imageUrl, onRemove, className }: ImagePreviewProp
       <img
         src={imageUrl}
         alt="Uploaded preview"
-        className="max-w-full max-h-[30vh] sm:max-h-[40vh] object-contain rounded-lg shadow-lg"
+        className="max-w-full max-h-[50vh] sm:max-h-[55vh] md:max-h-[60vh] object-contain rounded-lg shadow-lg"
       />
       <Button
         variant="outline"
