@@ -367,12 +367,12 @@ export default function LabubufyApp() {
       )}
 
       {/* Main Content */}
-      <div className="flex-1 flex items-center justify-center p-2 sm:p-4">
-        <div className="max-w-6xl w-full border-2 border-black bg-white rounded-lg overflow-hidden h-[80vh]">
+      <div className="flex-1 p-2 sm:p-4">
+        <div className="max-w-6xl w-full mx-auto border-2 border-black bg-white rounded-lg overflow-hidden min-h-[calc(100vh-8rem)] sm:h-[80vh]">
           <div className="flex flex-col-reverse sm:flex-row h-full">
             {/* Left Panel - Labubu Selection */}
-            <div className="w-full sm:w-1/2 p-4 sm:p-6 sm:border-r border-black flex flex-col">
-              <div className="w-full h-fit max-w-sm mx-auto flex-1 flex flex-col justify-center">
+            <div className="w-full sm:w-1/2 p-3 sm:p-6 sm:border-r border-black flex flex-col overflow-y-auto">
+              <div className="w-full h-fit max-w-sm mx-auto flex-1 flex flex-col justify-center py-2">
                 {/* Labubu Selection Grid */}
                 <LabubuSelection
                   selectedLabubu={selectedLabubu}
@@ -381,9 +381,9 @@ export default function LabubufyApp() {
                 />
 
                 {/* Generate button */}
-                <div className="flex-shrink-0">
+                <div className="flex-shrink-0 mt-4">
                   <Button
-                    className="w-full bg-purple-500 hover:bg-purple-600 text-white py-4 sm:py-5 text-sm sm:text-base"
+                    className="w-full bg-purple-500 hover:bg-purple-600 text-white py-3 sm:py-5 text-sm sm:text-base font-medium"
                     onClick={handleGenerate}
                     disabled={
                       !uploadedFile || selectedLabubu === null || isGenerating
@@ -396,9 +396,9 @@ export default function LabubufyApp() {
             </div>
 
             {/* Right Panel - Upload/Result */}
-            <div className="w-full sm:w-1/2 bg-white flex flex-col p-4 sm:p-6">
+            <div className="w-full sm:w-1/2 bg-white flex flex-col p-3 sm:p-6 overflow-y-auto">
               {/* Main content area */}
-              <div className="flex-1 flex items-center justify-center">
+              <div className="flex-1 flex items-center justify-center min-h-[300px]">
                 {isGenerating ? (
                   <GenerationProgress
                     progress={generationProgress}
@@ -426,28 +426,28 @@ export default function LabubufyApp() {
 
               {/* Bottom action buttons - only show when image is generated */}
               {generatedImage && (
-                <div className="flex-shrink-0 mt-4 space-y-3">
-                  <div className="flex gap-3">
+                <div className="flex-shrink-0 mt-4 space-y-3 pb-2">
+                  <div className="flex gap-2 sm:gap-3">
                     <Button
                       variant="outline"
-                      className="flex-1 border-purple-500 text-purple-500 hover:bg-purple-500 hover:text-white py-3 bg-white text-sm"
+                      className="flex-1 border-purple-500 text-purple-500 hover:bg-purple-500 hover:text-white py-2 sm:py-3 bg-white text-xs sm:text-sm"
                       onClick={handleDownload}
                     >
-                      <Download className="h-4 w-4 mr-2" />
+                      <Download className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
                       Download
                     </Button>
                     <Button
                       variant="outline"
-                      className="flex-1 border-purple-500 text-purple-500 hover:bg-purple-500 hover:text-white py-3 bg-white text-sm"
+                      className="flex-1 border-purple-500 text-purple-500 hover:bg-purple-500 hover:text-white py-2 sm:py-3 bg-white text-xs sm:text-sm"
                       onClick={handleShare}
                     >
-                      <Share2 className="h-4 w-4 mr-2" />
+                      <Share2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
                       Share
                     </Button>
                   </div>
                   <Button
                     variant="outline"
-                    className="w-full border-black text-black hover:bg-black hover:text-white py-3 bg-white text-sm"
+                    className="w-full border-black text-black hover:bg-black hover:text-white py-2 sm:py-3 bg-white text-xs sm:text-sm"
                     onClick={() => {
                       setGeneratedImage(null);
                       setGeneratedBlob(null);
