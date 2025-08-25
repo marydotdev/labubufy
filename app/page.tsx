@@ -332,16 +332,16 @@ export default function LabubufyApp() {
   return (
     <div className="min-h-screen flex flex-col">
       {/* Header */}
-      <header className="bg-white border-b border-gray-200 px-4 py-3">
-        <div className="max-w-6xl mx-auto flex items-center justify-between">
-          <h1 className="font-zubilo text-xl sm:text-2xl font-bold text-gray-950">
+      <header className="bg-white border-b border-black px-4 py-3">
+        <div className="max-w-6xl mx-auto flex items-center justify-between px-2">
+          <h1 className="font-zubilo text-xl sm:text-2xl md:text-4xl font-bold text-black">
             Labubufy
           </h1>
           <Button
             variant="outline"
             size="sm"
             onClick={() => setShowHistory(!showHistory)}
-            className="flex items-center gap-2"
+            className="flex items-center gap-2 border-black text-black hover:bg-purple-50"
           >
             <History className="h-4 w-4" />
             History
@@ -368,10 +368,10 @@ export default function LabubufyApp() {
 
       {/* Main Content */}
       <div className="flex-1 flex items-center justify-center p-2 sm:p-4">
-        <div className="max-w-6xl w-full border-2 border-gray-950 bg-white rounded-lg overflow-hidden h-[80vh]">
+        <div className="max-w-6xl w-full border-2 border-black bg-white rounded-lg overflow-hidden h-[80vh]">
           <div className="flex flex-col-reverse sm:flex-row h-full">
             {/* Left Panel - Labubu Selection */}
-            <div className="w-full sm:w-1/2 p-4 sm:p-6 sm:border-r border-gray-200 flex flex-col">
+            <div className="w-full sm:w-1/2 p-4 sm:p-6 sm:border-r border-black flex flex-col">
               <div className="w-full h-fit max-w-sm mx-auto flex-1 flex flex-col justify-center">
                 {/* Labubu Selection Grid */}
                 <LabubuSelection
@@ -380,8 +380,8 @@ export default function LabubufyApp() {
                   className="mb-6 flex-shrink-0"
                 />
 
-                {/* Purple buttons underneath */}
-                <div className="space-y-3 sm:space-y-4 flex-shrink-0">
+                {/* Generate button */}
+                <div className="flex-shrink-0">
                   <Button
                     className="w-full bg-purple-500 hover:bg-purple-600 text-white py-4 sm:py-5 text-sm sm:text-base"
                     onClick={handleGenerate}
@@ -391,55 +391,75 @@ export default function LabubufyApp() {
                   >
                     {isGenerating ? "Generating..." : "Generate Photo"}
                   </Button>
-
-                  {generatedImage && (
-                    <div className="flex gap-3 sm:gap-4">
-                      <Button
-                        variant="outline"
-                        className="flex-1 border-purple-500 text-purple-500 hover:bg-purple-50 py-3 sm:py-4 bg-transparent text-sm"
-                        onClick={handleDownload}
-                      >
-                        <Download className="h-4 w-4 mr-2" />
-                        Download
-                      </Button>
-                      <Button
-                        variant="outline"
-                        className="flex-1 border-purple-500 text-purple-500 hover:bg-purple-50 py-3 sm:py-4 bg-transparent text-sm"
-                        onClick={handleShare}
-                      >
-                        <Share2 className="h-4 w-4 mr-2" />
-                        Share
-                      </Button>
-                    </div>
-                  )}
                 </div>
               </div>
             </div>
 
             {/* Right Panel - Upload/Result */}
-            <div className="w-full sm:w-1/2 bg-gray-100 flex items-center justify-center p-4 sm:p-6">
-              {isGenerating ? (
-                <GenerationProgress
-                  progress={generationProgress}
-                  estimatedTime={estimatedTime}
-                  status={generationStatus}
-                  onCancel={handleCancelGeneration}
-                />
-              ) : generatedImage ? (
-                <ImagePreview
-                  imageUrl={generatedImage}
-                  onRemove={handleImageRemove}
-                />
-              ) : uploadedImage ? (
-                <ImagePreview
-                  imageUrl={uploadedImage}
-                  onRemove={handleImageRemove}
-                />
-              ) : (
-                <ImageUpload
-                  onImageUpload={handleImageUpload}
-                  onError={handleUploadError}
-                />
+            <div className="w-full sm:w-1/2 bg-white flex flex-col p-4 sm:p-6">
+              {/* Main content area */}
+              <div className="flex-1 flex items-center justify-center">
+                {isGenerating ? (
+                  <GenerationProgress
+                    progress={generationProgress}
+                    estimatedTime={estimatedTime}
+                    status={generationStatus}
+                    onCancel={handleCancelGeneration}
+                  />
+                ) : generatedImage ? (
+                  <ImagePreview
+                    imageUrl={generatedImage}
+                    onRemove={handleImageRemove}
+                  />
+                ) : uploadedImage ? (
+                  <ImagePreview
+                    imageUrl={uploadedImage}
+                    onRemove={handleImageRemove}
+                  />
+                ) : (
+                  <ImageUpload
+                    onImageUpload={handleImageUpload}
+                    onError={handleUploadError}
+                  />
+                )}
+              </div>
+
+              {/* Bottom action buttons - only show when image is generated */}
+              {generatedImage && (
+                <div className="flex-shrink-0 mt-4 space-y-3">
+                  <div className="flex gap-3">
+                    <Button
+                      variant="outline"
+                      className="flex-1 border-purple-500 text-purple-500 hover:bg-purple-500 hover:text-white py-3 bg-white text-sm"
+                      onClick={handleDownload}
+                    >
+                      <Download className="h-4 w-4 mr-2" />
+                      Download
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="flex-1 border-purple-500 text-purple-500 hover:bg-purple-500 hover:text-white py-3 bg-white text-sm"
+                      onClick={handleShare}
+                    >
+                      <Share2 className="h-4 w-4 mr-2" />
+                      Share
+                    </Button>
+                  </div>
+                  <Button
+                    variant="outline"
+                    className="w-full border-black text-black hover:bg-black hover:text-white py-3 bg-white text-sm"
+                    onClick={() => {
+                      setGeneratedImage(null);
+                      setGeneratedBlob(null);
+                      setUploadedImage(null);
+                      setUploadedFile(null);
+                      setSelectedLabubu(null);
+                      setError(null);
+                    }}
+                  >
+                    Reset
+                  </Button>
+                </div>
               )}
             </div>
           </div>

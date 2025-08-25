@@ -29,50 +29,50 @@ export const CONFIG = {
 export const LABUBU_DOLLS = [
   {
     id: 1,
-    name: "Classic Pink",
+    name: "I FOUND YOU",
     color: "bg-pink-400",
     image: "/labubu-images/dolls/labubu1.png",
-    description: "Sweet and adorable pink Labubu",
+    description: "I FOUND YOU Labubu",
     type: "doll" as const,
   },
   {
     id: 2,
-    name: "Blue Dreamer",
+    name: "FALL IN WILD",
     color: "bg-blue-400",
     image: "/labubu-images/dolls/labubu2.png",
-    description: "Calm and dreamy blue Labubu",
+    description: "FALL IN WILD Labubu",
     type: "doll" as const,
   },
   {
     id: 3,
-    name: "Yellow Sunshine",
+    name: "FLIP WITH ME",
     color: "bg-yellow-400",
     image: "/labubu-images/dolls/labubu3.png",
-    description: "Bright and cheerful yellow Labubu",
+    description: "FLIP WITH ME Labubu",
     type: "doll" as const,
   },
   {
     id: 4,
-    name: "Purple Magic",
+    name: "BEST OF LUCK",
     color: "bg-purple-400",
     image: "/labubu-images/dolls/labubu4.png",
-    description: "Mystical and enchanting purple Labubu",
+    description: "BEST OF LUCK Labubu",
     type: "doll" as const,
   },
   {
     id: 5,
-    name: "Green Forest",
+    name: "TIME TO CHILL",
     color: "bg-green-400",
     image: "/labubu-images/dolls/labubu5.png",
-    description: "Natural and fresh green Labubu",
+    description: "TIME TO CHILL Labubu",
     type: "doll" as const,
   },
   {
     id: 6,
-    name: "Orange Sunset",
+    name: "DRESS BE LATTE",
     color: "bg-orange-400",
     image: "/labubu-images/dolls/labubu6.png",
-    description: "Warm and vibrant orange Labubu",
+    description: "DRESS BE LATTE Labubu",
     type: "doll" as const,
   },
 ] as const;
@@ -80,50 +80,50 @@ export const LABUBU_DOLLS = [
 export const LABUBU_KEYCHAINS = [
   {
     id: 7,
-    name: "Mini Pink",
+    name: "EXCITING MACARON",
     color: "bg-pink-300",
     image: "/labubu-images/keychains/labubu-keychain1.png",
-    description: "Tiny pink Labubu keychain",
+    description: "EXCITING MACARON Labubu keychain",
     type: "keychain" as const,
   },
   {
     id: 8,
-    name: "Mini Blue",
+    name: "HAVE A SEAT pink",
     color: "bg-blue-300",
     image: "/labubu-images/keychains/labubu-keychain2.png",
-    description: "Tiny blue Labubu keychain",
+    description: "HAVE A SEAT Labubu keychain",
     type: "keychain" as const,
   },
   {
     id: 9,
-    name: "Mini Yellow",
+    name: "HAVE A SEAT teal",
     color: "bg-yellow-300",
     image: "/labubu-images/keychains/labubu-keychain3.png",
-    description: "Tiny yellow Labubu keychain",
+    description: "HAVE A SEAT teal Labubu keychain",
     type: "keychain" as const,
   },
   {
     id: 10,
-    name: "Mini Purple",
+    name: "HAVE A SEAT lavender",
     color: "bg-purple-300",
     image: "/labubu-images/keychains/labubu-keychain4.png",
-    description: "Tiny purple Labubu keychain",
+    description: "HAVE A SEAT lavender Labubu keychain",
     type: "keychain" as const,
   },
   {
     id: 11,
-    name: "Mini Green",
+    name: "HAVE A SEAT rose",
     color: "bg-green-300",
     image: "/labubu-images/keychains/labubu-keychain5.png",
-    description: "Tiny green Labubu keychain",
+    description: "HAVE A SEAT rose Labubu keychain",
     type: "keychain" as const,
   },
   {
     id: 12,
-    name: "Mini Orange",
+    name: "HAVE A SEAT gray",
     color: "bg-orange-300",
     image: "/labubu-images/keychains/labubu-keychain6.png",
-    description: "Tiny orange Labubu keychain",
+    description: "HAVE A SEAT gray Labubu keychain",
     type: "keychain" as const,
   },
 ] as const;
@@ -165,8 +165,8 @@ export function getPublicUrl(path: string): string {
 
   // Priority 4: GitHub raw URLs for development (accessible to Replicate)
   if (path.includes("labubu") && process.env.NODE_ENV === "development") {
-    const filename = path.split("/").pop();
-    return `https://raw.githubusercontent.com/marydotdev/labubufy/main/public/labubu-images/${filename}`;
+    // Use the full path structure including dolls/ or keychains/ subdirectories
+    return `https://raw.githubusercontent.com/marydotdev/labubufy/main/public${path}`;
   }
 
   // Final fallback - this will fail for Replicate but works for local preview

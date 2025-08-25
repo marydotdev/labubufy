@@ -1,6 +1,7 @@
 // Fixed lib/step-processor.ts with better Step 2 prompt
 import { retryHandler } from "./errors";
 import { generationSessions, type GenerationSession } from "./session-store";
+import { LABUBU_OPTIONS } from "./config";
 
 interface ReplicateStatus {
   id: string;
@@ -192,6 +193,13 @@ class StepProcessor {
         )}...`
       );
 
+      // Determine if it's a doll or keychain for the prompt
+      const selectedLabubu = LABUBU_OPTIONS.find(l => l.id === session.labubu_id);
+      const itemType = selectedLabubu?.type === 'keychain' ? 'keychain' : 'doll';
+      const prompt = `have the person on the left hold the ${itemType} on the right`;
+      
+      console.log(`Step 2 for ${sessionId}: Using ${itemType} prompt for Labubu ID ${session.labubu_id}: "${prompt}"`);
+
       // Start Step 2: Qwen image edit with improved prompt
       const step2Response = await retryHandler.withRetry(async () => {
         const controller = new AbortController();
@@ -211,8 +219,7 @@ class StepProcessor {
                   process.env.QWEN_IMAGE_EDIT_VERSION || "qwen/qwen-image-edit",
                 input: {
                   image: mergedImageUrl,
-                  prompt:
-                    "have the person on the left hold the doll on the right",
+                  prompt: prompt,
                 },
               }),
               signal: controller.signal,

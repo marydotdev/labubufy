@@ -226,20 +226,20 @@ export function ImageUpload({ onImageUpload, onError, className }: ImageUploadPr
         onDrop={handleDrop}
         onClick={() => fileInputRef.current?.click()}
       >
-        <Upload className="h-10 w-10 sm:h-12 sm:w-12 text-gray-400 mb-3 sm:mb-4" />
-        <p className="text-gray-500 text-sm sm:text-base text-center px-4">
+        <Upload className="h-10 w-10 sm:h-12 sm:w-12 text-purple-400 mb-3 sm:mb-4" />
+        <p className="text-black text-sm sm:text-base text-center px-4">
           Drop image here or click to upload
         </p>
-        <p className="text-gray-400 text-xs mt-1">
+        <p className="text-gray-600 text-xs mt-1">
           JPG, PNG, WebP up to 100MB
         </p>
       </div>
 
       {/* Action buttons */}
-      <div className="text-gray-50 flex gap-3 mt-4 justify-center">
+      <div className="flex gap-3 mt-4 justify-center">
         <Button
           onClick={() => fileInputRef.current?.click()}
-          className="bg-gray-800 hover:bg-gray-900 text-sm sm:text-base px-6 py-3"
+          className="bg-purple-500 hover:bg-purple-600 text-white text-sm sm:text-base px-6 py-3"
         >
           <Upload className="h-4 w-4 mr-2" />
           Choose Photo
@@ -250,7 +250,7 @@ export function ImageUpload({ onImageUpload, onError, className }: ImageUploadPr
             variant="outline"
             onClick={startCamera}
             disabled={isCameraLoading}
-            className="text-sm sm:text-base px-6 py-3"
+            className="border-black text-black hover:bg-purple-50 text-sm sm:text-base px-6 py-3"
           >
             <Camera className="h-4 w-4 mr-2" />
             {isCameraLoading ? 'Loading...' : 'Camera'}
