@@ -26,50 +26,109 @@ export const CONFIG = {
 } as const;
 
 // Labubu character definitions
-export const LABUBU_OPTIONS = [
+export const LABUBU_DOLLS = [
   {
     id: 1,
     name: "Classic Pink",
     color: "bg-pink-400",
-    image: "/labubu-images/labubu1.png",
+    image: "/labubu-images/dolls/labubu1.png",
     description: "Sweet and adorable pink Labubu",
+    type: "doll" as const,
   },
   {
     id: 2,
     name: "Blue Dreamer",
     color: "bg-blue-400",
-    image: "/labubu-images/labubu2.png",
+    image: "/labubu-images/dolls/labubu2.png",
     description: "Calm and dreamy blue Labubu",
+    type: "doll" as const,
   },
   {
     id: 3,
     name: "Yellow Sunshine",
     color: "bg-yellow-400",
-    image: "/labubu-images/labubu3.png",
+    image: "/labubu-images/dolls/labubu3.png",
     description: "Bright and cheerful yellow Labubu",
+    type: "doll" as const,
   },
   {
     id: 4,
     name: "Purple Magic",
     color: "bg-purple-400",
-    image: "/labubu-images/labubu4.png",
+    image: "/labubu-images/dolls/labubu4.png",
     description: "Mystical and enchanting purple Labubu",
+    type: "doll" as const,
   },
   {
     id: 5,
     name: "Green Forest",
     color: "bg-green-400",
-    image: "/labubu-images/labubu5.png",
+    image: "/labubu-images/dolls/labubu5.png",
     description: "Natural and fresh green Labubu",
+    type: "doll" as const,
   },
   {
     id: 6,
     name: "Orange Sunset",
     color: "bg-orange-400",
-    image: "/labubu-images/labubu6.png",
+    image: "/labubu-images/dolls/labubu6.png",
     description: "Warm and vibrant orange Labubu",
+    type: "doll" as const,
   },
 ] as const;
+
+export const LABUBU_KEYCHAINS = [
+  {
+    id: 7,
+    name: "Mini Pink",
+    color: "bg-pink-300",
+    image: "/labubu-images/keychains/labubu-keychain1.png",
+    description: "Tiny pink Labubu keychain",
+    type: "keychain" as const,
+  },
+  {
+    id: 8,
+    name: "Mini Blue",
+    color: "bg-blue-300",
+    image: "/labubu-images/keychains/labubu-keychain2.png",
+    description: "Tiny blue Labubu keychain",
+    type: "keychain" as const,
+  },
+  {
+    id: 9,
+    name: "Mini Yellow",
+    color: "bg-yellow-300",
+    image: "/labubu-images/keychains/labubu-keychain3.png",
+    description: "Tiny yellow Labubu keychain",
+    type: "keychain" as const,
+  },
+  {
+    id: 10,
+    name: "Mini Purple",
+    color: "bg-purple-300",
+    image: "/labubu-images/keychains/labubu-keychain4.png",
+    description: "Tiny purple Labubu keychain",
+    type: "keychain" as const,
+  },
+  {
+    id: 11,
+    name: "Mini Green",
+    color: "bg-green-300",
+    image: "/labubu-images/keychains/labubu-keychain5.png",
+    description: "Tiny green Labubu keychain",
+    type: "keychain" as const,
+  },
+  {
+    id: 12,
+    name: "Mini Orange",
+    color: "bg-orange-300",
+    image: "/labubu-images/keychains/labubu-keychain6.png",
+    description: "Tiny orange Labubu keychain",
+    type: "keychain" as const,
+  },
+] as const;
+
+export const LABUBU_OPTIONS = [...LABUBU_DOLLS, ...LABUBU_KEYCHAINS] as const;
 
 export type LabubuOption = (typeof LABUBU_OPTIONS)[number];
 
@@ -104,10 +163,10 @@ export function getPublicUrl(path: string): string {
     return `${process.env.NEXT_PUBLIC_LABUBU_BASE_URL}/${filename}`;
   }
 
-  // Priority 4: Fallback to actual Labubu image for development testing
-  if (path.includes("labubu")) {
-    // Use the provided Labubu image URL for all variants during development
-    return "https://replicate.delivery/pbxt/NZiSMWETTlodO9NDMVB0IOj0xk4Jr9gA3AXa7ExawGyJtr4o/Screenshot%202025-08-21%20at%201.10.10%E2%80%AFPM%20copy%202.png";
+  // Priority 4: GitHub raw URLs for development (accessible to Replicate)
+  if (path.includes("labubu") && process.env.NODE_ENV === "development") {
+    const filename = path.split("/").pop();
+    return `https://raw.githubusercontent.com/marydotdev/labubufy/main/public/labubu-images/${filename}`;
   }
 
   // Final fallback - this will fail for Replicate but works for local preview

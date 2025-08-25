@@ -57,10 +57,10 @@ export function ImageUpload({ onImageUpload, onError, className }: ImageUploadPr
         try {
           fileValidator.validateFile(file);
           await fileValidator.validateImageDimensions(file);
-          
+
           // Optimize image for processing
           const { file: optimizedFile } = await imageUtils.optimizeForProcessing(file);
-          
+
           const previewUrl = await imageUtils.fileToBase64(optimizedFile);
           onImageUpload(optimizedFile, previewUrl);
         } catch (err) {
@@ -236,7 +236,7 @@ export function ImageUpload({ onImageUpload, onError, className }: ImageUploadPr
       </div>
 
       {/* Action buttons */}
-      <div className="flex gap-3 mt-4 justify-center">
+      <div className="text-gray-50 flex gap-3 mt-4 justify-center">
         <Button
           onClick={() => fileInputRef.current?.click()}
           className="bg-gray-800 hover:bg-gray-900 text-sm sm:text-base px-6 py-3"

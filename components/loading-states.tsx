@@ -49,21 +49,23 @@ interface GenerationProgressProps {
   className?: string;
 }
 
-export function GenerationProgress({ 
-  progress = 0, 
-  estimatedTime = 0, 
-  status = '', 
-  onCancel, 
-  className 
+export function GenerationProgress({
+  progress = 0,
+  estimatedTime = 0,
+  status = "",
+  onCancel,
+  className,
 }: GenerationProgressProps) {
   return (
-    <div className={cn("flex flex-col items-center justify-center p-8", className)}>
+    <div
+      className={cn("flex flex-col items-center justify-center p-8", className)}
+    >
       {/* Animated sparkles */}
       <div className="relative mb-6">
         <div className="w-20 h-20 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center">
           <Sparkles className="w-8 h-8 text-white animate-pulse" />
         </div>
-        
+
         {/* Spinning ring */}
         <div className="absolute inset-0 rounded-full border-4 border-purple-200 border-t-purple-500 animate-spin" />
       </div>
@@ -74,22 +76,28 @@ export function GenerationProgress({
           Creating your Labubu photo...
         </h3>
         <p className="text-sm text-gray-600">
-          {status === 'starting' && 'Getting ready...'}
-          {status === 'processing' && estimatedTime > 0 && `About ${estimatedTime} seconds remaining`}
-          {status === 'processing' && estimatedTime === 0 && 'Processing your image...'}
-          {!status && 'This might take up to 30 seconds'}
+          {status === "starting" && "Getting ready..."}
+          {status === "processing" &&
+            estimatedTime > 0 &&
+            `About ${estimatedTime} seconds remaining`}
+          {status === "processing" &&
+            estimatedTime === 0 &&
+            "Processing your image..."}
+          {!status && "This might take up to 30 seconds"}
         </p>
-        
+
         {/* Progress bar */}
         <div className="w-64 h-2 bg-gray-200 rounded-full overflow-hidden">
-          <div 
+          <div
             className="h-full bg-gradient-to-r from-purple-500 to-pink-500 transition-all duration-500 ease-out"
             style={{ width: `${Math.min(progress, 100)}%` }}
           />
         </div>
-        
+
         <p className="text-xs text-gray-500">
-          {progress > 0 ? `${Math.round(progress)}% complete` : 'Initializing...'}
+          {progress > 0
+            ? `${Math.round(progress)}% complete`
+            : "Initializing..."}
         </p>
 
         {/* Cancel button */}
@@ -115,8 +123,8 @@ interface SpinnerProps {
 export function Spinner({ size = "md", className }: SpinnerProps) {
   const sizeClasses = {
     sm: "w-4 h-4",
-    md: "w-6 h-6", 
-    lg: "w-8 h-8"
+    md: "w-6 h-6",
+    lg: "w-8 h-8",
   };
 
   return (
@@ -131,7 +139,11 @@ interface LoadingOverlayProps {
   progress?: number;
 }
 
-export function LoadingOverlay({ show, message = "Loading...", progress }: LoadingOverlayProps) {
+export function LoadingOverlay({
+  show,
+  message = "Loading...",
+  progress,
+}: LoadingOverlayProps) {
   if (!show) return null;
 
   return (
@@ -144,7 +156,7 @@ export function LoadingOverlay({ show, message = "Loading...", progress }: Loadi
             {progress !== undefined && (
               <div className="mt-3 w-full">
                 <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
-                  <div 
+                  <div
                     className="h-full bg-purple-500 transition-all duration-300"
                     style={{ width: `${Math.min(progress, 100)}%` }}
                   />
@@ -170,20 +182,23 @@ interface EmptyStateProps {
   className?: string;
 }
 
-export function EmptyState({ title, description, icon, action, className }: EmptyStateProps) {
+export function EmptyState({
+  title,
+  description,
+  icon,
+  action,
+  className,
+}: EmptyStateProps) {
   return (
-    <div className={cn("flex flex-col items-center justify-center p-8 text-center", className)}>
-      {icon && (
-        <div className="mb-4 text-gray-400">
-          {icon}
-        </div>
+    <div
+      className={cn(
+        "flex flex-col items-center justify-center p-8 text-center",
+        className
       )}
-      <h3 className="text-lg font-semibold text-gray-900 mb-2">
-        {title}
-      </h3>
-      <p className="text-gray-600 mb-4 max-w-sm">
-        {description}
-      </p>
+    >
+      {icon && <div className="mb-4 text-gray-400">{icon}</div>}
+      <h3 className="text-lg font-semibold text-gray-900 mb-2">{title}</h3>
+      <p className="text-gray-600 mb-4 max-w-sm">{description}</p>
       {action}
     </div>
   );

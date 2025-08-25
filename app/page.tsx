@@ -334,7 +334,7 @@ export default function LabubufyApp() {
       {/* Header */}
       <header className="bg-white border-b border-gray-200 px-4 py-3">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
-          <h1 className="font-zubilo text-xl sm:text-2xl font-bold text-purple-600">
+          <h1 className="font-zubilo text-xl sm:text-2xl font-bold text-gray-950">
             Labubufy
           </h1>
           <Button
@@ -368,7 +368,7 @@ export default function LabubufyApp() {
 
       {/* Main Content */}
       <div className="flex-1 flex items-center justify-center p-2 sm:p-4">
-        <div className="max-w-6xl w-full border-2 border-red-200 bg-white rounded-lg overflow-hidden h-[80vh]">
+        <div className="max-w-6xl w-full border-2 border-gray-950 bg-white rounded-lg overflow-hidden h-[80vh]">
           <div className="flex flex-col-reverse sm:flex-row h-full">
             {/* Left Panel - Labubu Selection */}
             <div className="w-full sm:w-1/2 p-4 sm:p-6 sm:border-r border-gray-200 flex flex-col">
