@@ -332,9 +332,9 @@ export default function LabubufyApp() {
   return (
     <div className="min-h-screen flex flex-col">
       {/* Header */}
-      <header className="bg-white border-b border-black px-4 py-3">
+      <header className="bg-purple-100 border-b border-black px-4 py-3">
         <div className="max-w-6xl mx-auto flex items-center justify-between px-2">
-          <h1 className="font-zubilo text-xl sm:text-2xl md:text-4xl font-bold text-black">
+          <h1 className="font-zubilo text-xl sm:text-2xl md:text-4xl font-bold text-purple-600">
             Labubufy
           </h1>
           <Button
@@ -367,7 +367,7 @@ export default function LabubufyApp() {
       )}
 
       {/* Main Content */}
-      <div className="flex-1 p-2 sm:p-4">
+      <div className="flex-1 p-2 sm:p-4 bg-[url('/asfalt-light.png')]">
         <div className="max-w-6xl w-full mx-auto border-2 border-black bg-white rounded-lg overflow-hidden min-h-[calc(100vh-8rem)] sm:h-[80vh]">
           <div className="flex flex-col-reverse sm:flex-row h-full">
             {/* Left Panel - Labubu Selection */}
