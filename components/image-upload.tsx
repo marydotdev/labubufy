@@ -226,7 +226,7 @@ export function ImageUpload({ onImageUpload, onError, className }: ImageUploadPr
         onDrop={handleDrop}
         onClick={() => fileInputRef.current?.click()}
       >
-        <Upload className="h-10 w-10 sm:h-12 sm:w-12 text-purple-400 mb-3 sm:mb-4" />
+        <Upload className="h-10 w-10 sm:h-12 sm:w-12 text-purple-dark mb-3 sm:mb-4" />
         <p className="text-black text-sm sm:text-base text-center px-4">
           Drop image here or click to upload
         </p>
@@ -239,7 +239,7 @@ export function ImageUpload({ onImageUpload, onError, className }: ImageUploadPr
       <div className="flex gap-3 mt-4 justify-center">
         <Button
           onClick={() => fileInputRef.current?.click()}
-          className="bg-purple-500 hover:bg-purple-600 text-white text-sm sm:text-base px-6 py-3"
+          className="bg-purple-dark hover:bg-purple-light text-white text-sm sm:text-base px-6 py-3"
         >
           <Upload className="h-4 w-4 mr-2" />
           Choose Photo

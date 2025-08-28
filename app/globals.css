@@ -1,1 +1,12 @@
 @import "tailwindcss";
+
+@theme {
+  --color-purple-light: #8D60EC;
+  --color-purple-dark: #5712EB;
+  --color-labubu-primary: #8D60EC;
+  --color-labubu-secondary: #5712EB;
+}
+
+html {
+  background-color: #8D60EC;
+}
