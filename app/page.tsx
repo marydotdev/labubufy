@@ -346,8 +346,8 @@ export default function LabubufyApp() {
     <div className="min-h-screen flex flex-col">
       {/* Header */}
       <header className="px-4 py-3">
-        <div className="bg-white max-w-6xl mx-auto flex items-center justify-between px-2 py-3 rounded-xl">
-          <div className="h-8 w-24"></div>
+        <div className="bg-white max-w-6xl mx-auto flex items-center justify-center sm:justify-between px-2 py-3 rounded-xl">
+          <div className="hidden sm:block h-8 w-24"></div>
           {/* <Link href="/">
             <Button
               variant="outline"
@@ -366,15 +366,17 @@ export default function LabubufyApp() {
               height={200}
             />
           </Link>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowHistory(!showHistory)}
-            className="flex items-center gap-2 border-black text-black hover:bg-purple-50"
-          >
-            <History className="h-4 w-4" />
-            History
-          </Button>
+          <div className="hidden sm:block h-8 w-24">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowHistory(!showHistory)}
+              className=" sm:flex items-center gap-2 border-black text-black hover:bg-purple-50"
+            >
+              <History className="h-4 w-4" />
+              History
+            </Button>
+          </div>
         </div>
       </header>
       {/* Error Display */}
