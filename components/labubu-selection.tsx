@@ -56,15 +56,31 @@ export function LabubuSelection({
       </div>
 
       {/* Content area */}
-      <div className="grid grid-cols-3 sm:grid-cols-2 gap-3 sm:gap-4">
-        {currentOptions.map((labubu) => (
-          <LabubuCard
-            key={labubu.id}
-            labubu={labubu}
-            isSelected={selectedLabubu === labubu.id}
-            onSelect={() => onSelect(labubu.id)}
-          />
-        ))}
+      <div>
+        {/* Mobile: Horizontal scroll */}
+        <div className="flex gap-3 overflow-x-auto p-2 sm:hidden">
+          {currentOptions.map((labubu) => (
+            <div key={labubu.id} className="flex-shrink-0 w-24 h-24">
+              <LabubuCard
+                labubu={labubu}
+                isSelected={selectedLabubu === labubu.id}
+                onSelect={() => onSelect(labubu.id)}
+              />
+            </div>
+          ))}
+        </div>
+
+        {/* Desktop: Grid */}
+        <div className="hidden sm:grid sm:grid-cols-2 sm:gap-4">
+          {currentOptions.map((labubu) => (
+            <LabubuCard
+              key={labubu.id}
+              labubu={labubu}
+              isSelected={selectedLabubu === labubu.id}
+              onSelect={() => onSelect(labubu.id)}
+            />
+          ))}
+        </div>
       </div>
     </div>
   );
