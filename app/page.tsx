@@ -3,7 +3,12 @@
 import React from "react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Download, Share2, History } from "lucide-react";
+import {
+  Download,
+  Share2,
+  History,
+  MessageCircleQuestionMark,
+} from "lucide-react";
 import { LabubuSelection } from "@/components/labubu-selection";
 import { ImageUpload, ImagePreview } from "@/components/image-upload";
 import { GenerationProgress } from "@/components/loading-states";
@@ -12,6 +17,8 @@ import { errorHandler } from "@/lib/errors";
 import { imageUtils, formatUtils, urlUtils } from "@/lib/utils";
 import { imageStorage } from "@/lib/storage";
 import { sharingService } from "@/lib/sharing";
+import Image from "next/image";
+import Link from "next/link";
 
 interface GenerationRequest {
   image: string;
@@ -333,11 +340,26 @@ export default function LabubufyApp() {
   return (
     <div className="min-h-screen flex flex-col">
       {/* Header */}
-      <header className="bg-white border-b border-black px-4 py-3">
+      <header className="sticky border-b border-purple-dark bg-white px-4 py-3">
         <div className="max-w-6xl mx-auto flex items-center justify-between px-2">
-          <h1 className="font-zubilo text-xl sm:text-2xl md:text-4xl font-bold text-black">
-            Labubufy
-          </h1>
+          <Link href="/">
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex items-center gap-2 border-black text-black hover:bg-purple-50"
+            >
+              <MessageCircleQuestionMark className="h-4 w-4" />
+              More
+            </Button>
+          </Link>
+          <Link href="/">
+            <Image
+              src="/LabubufyLogo.png"
+              alt="Labubufy"
+              width={200}
+              height={200}
+            />
+          </Link>
           <Button
             variant="outline"
             size="sm"
@@ -349,7 +371,6 @@ export default function LabubufyApp() {
           </Button>
         </div>
       </header>
-
       {/* Error Display */}
       {error && (
         <div className="bg-red-50 border-l-4 border-red-400 p-4 mx-4 mt-4">
@@ -366,13 +387,13 @@ export default function LabubufyApp() {
           </div>
         </div>
       )}
-
+      {/* bg-[url('/asfalt-light.png')] */}
       {/* Main Content */}
       <div className="flex-1 p-2 sm:p-4">
-        <div className="max-w-6xl w-full mx-auto border-2 border-black bg-white rounded-lg overflow-hidden min-h-[calc(100vh-8rem)] sm:h-[80vh]">
-          <div className="flex flex-col-reverse sm:flex-row h-full">
+        <div className="max-w-6xl w-full mx-auto border-2 border-purple-dark bg-white rounded-xl overflow-hidden min-h-[calc(100vh-8rem)] sm:h-[80vh]">
+          <div className="flex flex-col-reverse sm:flex-row h-full ">
             {/* Left Panel - Labubu Selection */}
-            <div className="w-full sm:w-1/2 p-3 sm:p-6 sm:border-r border-black flex flex-col overflow-y-auto">
+            <div className="w-full sm:w-1/2 p-3 sm:p-6 sm:border-r border-purple-dark flex flex-col overflow-y-auto bg-gray-200  ">
               <div className="w-full h-fit max-w-sm mx-auto flex-1 flex flex-col justify-center py-2">
                 {/* Labubu Selection Grid */}
                 <LabubuSelection
@@ -384,7 +405,7 @@ export default function LabubufyApp() {
                 {/* Generate button */}
                 <div className="flex-shrink-0 mt-4">
                   <Button
-                    className="w-full bg-purple-500 hover:bg-purple-600 text-white py-3 sm:py-5 text-sm sm:text-base font-medium"
+                    className="w-full bg-purple-dark hover:bg-purple-light text-white py-3 sm:py-5 text-sm sm:text-base font-medium"
                     onClick={handleGenerate}
                     disabled={
                       !uploadedFile || selectedLabubu === null || isGenerating
@@ -431,7 +452,7 @@ export default function LabubufyApp() {
                   <div className="flex gap-2 sm:gap-3">
                     <Button
                       variant="outline"
-                      className="flex-1 border-purple-500 text-purple-500 hover:bg-purple-500 hover:text-white py-2 sm:py-3 bg-white text-xs sm:text-sm"
+                      className="flex-1 border-purple-dark text-purple-dark hover:bg-purple-dark hover:text-white py-2 sm:py-3 bg-white text-xs sm:text-sm"
                       onClick={handleDownload}
                     >
                       <Download className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
@@ -439,7 +460,7 @@ export default function LabubufyApp() {
                     </Button>
                     <Button
                       variant="outline"
-                      className="flex-1 border-purple-500 text-purple-500 hover:bg-purple-500 hover:text-white py-2 sm:py-3 bg-white text-xs sm:text-sm"
+                      className="flex-1 border-purple-dark text-purple-dark hover:bg-purple-dark hover:text-white py-2 sm:py-3 bg-white text-xs sm:text-sm"
                       onClick={handleShare}
                     >
                       <Share2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
@@ -466,7 +487,6 @@ export default function LabubufyApp() {
           </div>
         </div>
       </div>
-
       {/* History Gallery Modal */}
       <HistoryGallery
         isOpen={showHistory}
