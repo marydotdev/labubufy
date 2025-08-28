@@ -25,6 +25,16 @@ export const CONFIG = {
   MIN_OUTPUT_SIZE: 1080,
 } as const;
 
+// Nano Banana AI configuration
+export const AI_CONFIG = {
+  MODEL: "google/nano-banana",
+  // Alternative preview version: "google/gemini-2-5-flash-image-preview"
+  PROMPT_TEMPLATE:
+    "Create a photo of the person holding this Labubu doll. Make it look natural and realistic, maintaining the person's appearance exactly as shown.",
+  MAX_TOKENS: 1290, // Based on Google's pricing info
+  QUALITY: "high",
+} as const;
+
 // Labubu character definitions
 export const LABUBU_DOLLS = [
   {
@@ -177,4 +187,15 @@ export function getPublicUrl(path: string): string {
 export function getLabubuName(labubu_id: number): string {
   const labubu = LABUBU_OPTIONS.find((l) => l.id === labubu_id);
   return labubu?.name || "Classic Pink";
+}
+
+// Enhanced prompting strategy for different Labubu types
+export function generatePrompt(labubuId: number): string {
+  const labubu = LABUBU_OPTIONS.find(l => l.id === labubuId);
+
+  if (labubu?.type === 'keychain') {
+    return `"Show the person holding the Labubu keychain naturally in their hands, keeping their exact appearance, pose, and background unchanged. The keychain should appear as if it was always part of the original photo."`;
+  } else {
+    return `"Show the person holding the Labubu doll naturally in their hands, keeping their exact appearance, pose, and background unchanged. The doll should appear as if it was always part of the original photo."`;
+  }
 }

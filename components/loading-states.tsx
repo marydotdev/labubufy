@@ -5,6 +5,24 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Loader2, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+// Add custom CSS for animations
+if (typeof document !== 'undefined') {
+  const style = document.createElement('style');
+  style.textContent = `
+    .animate-fade-in {
+      animation: fadeIn 0.5s ease-in-out;
+    }
+    .animation-delay-300 {
+      animation-delay: 300ms;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  `;
+  document.head.appendChild(style);
+}
+
 // Loading skeleton for Labubu grid
 export function LabubuGridSkeleton() {
   return (
@@ -56,57 +74,105 @@ export function GenerationProgress({
   onCancel,
   className,
 }: GenerationProgressProps) {
+  // Array of encouraging messages that rotate
+  const messages = [
+    "🎨 AI is painting your perfect Labubu moment...",
+    "✨ Adding magical touches to your photo...",
+    "🌟 Creating something amazing just for you...",
+    "🎭 Your Labubu is getting ready to pose...",
+    "💫 Almost there! Putting the finishing touches...",
+  ];
+  
+  // Rotate message every 3 seconds
+  const [currentMessage, setCurrentMessage] = React.useState(0);
+  React.useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentMessage((prev) => (prev + 1) % messages.length);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [messages.length]);
+
+  // Fun facts about Labubu to show while waiting
+  const funFacts = [
+    "💡 Labubu was created by Hong Kong artist Kasing Lung in 2015",
+    "🦷 Those signature teeth were inspired by Nordic folklore",
+    "🌍 Labubu has fans all around the world!",
+    "🎨 Each Labubu has its own unique personality",
+    "⭐ You're about to create a one-of-a-kind Labubu memory!",
+  ];
+  
+  const [currentFact, setCurrentFact] = React.useState(0);
+  React.useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentFact((prev) => (prev + 1) % funFacts.length);
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [funFacts.length]);
+
   return (
     <div
       className={cn("flex flex-col items-center justify-center p-8", className)}
     >
-      {/* Animated sparkles */}
+      {/* Animated sparkles with bouncing effect */}
       <div className="relative mb-6">
-        <div className="w-20 h-20 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center">
-          <Sparkles className="w-8 h-8 text-white animate-pulse" />
+        <div className="w-20 h-20 rounded-full bg-gradient-to-r from-purple-500 via-pink-500 to-purple-600 flex items-center justify-center animate-pulse">
+          <Sparkles className="w-8 h-8 text-white animate-bounce" />
         </div>
 
-        {/* Spinning ring */}
+        {/* Multiple spinning rings for more visual interest */}
         <div className="absolute inset-0 rounded-full border-4 border-purple-200 border-t-purple-500 animate-spin" />
+        <div className="absolute inset-1 rounded-full border-2 border-pink-200 border-r-pink-400 animate-spin animation-delay-300" style={{animationDirection: 'reverse'}} />
       </div>
 
-      {/* Progress text */}
-      <div className="text-center space-y-2">
-        <h3 className="text-lg font-semibold text-gray-900">
-          Creating your Labubu photo...
+      {/* Progress text with rotating messages */}
+      <div className="text-center space-y-3 max-w-sm">
+        <h3 className="text-lg font-semibold text-gray-900 animate-fade-in">
+          {messages[currentMessage]}
         </h3>
+        
+        {/* Time remaining with more encouraging language */}
         <p className="text-sm text-gray-600">
-          {status === "starting" && "Getting ready..."}
-          {status === "processing" &&
-            estimatedTime > 0 &&
-            `About ${estimatedTime} seconds remaining`}
-          {status === "processing" &&
-            estimatedTime === 0 &&
-            "Processing your image..."}
-          {!status && "This might take up to 30 seconds"}
+          {status === "starting" && "🚀 Getting everything ready..."}
+          {status === "processing" && estimatedTime > 0 && (
+            estimatedTime > 30 ? "⏳ This is worth the wait!" : 
+            estimatedTime > 15 ? "🎯 Almost done!" : 
+            "🎉 Just a few more seconds!"
+          )}
+          {status === "processing" && estimatedTime === 0 && "🔮 Working some AI magic..."}
+          {!status && "💝 Great things take a little time!"}
         </p>
 
-        {/* Progress bar */}
-        <div className="w-64 h-2 bg-gray-200 rounded-full overflow-hidden">
+        {/* Enhanced progress bar with glow effect */}
+        <div className="w-64 h-3 bg-gray-200 rounded-full overflow-hidden shadow-inner">
           <div
-            className="h-full bg-gradient-to-r from-purple-500 to-pink-500 transition-all duration-500 ease-out"
-            style={{ width: `${Math.min(progress, 100)}%` }}
+            className="h-full bg-gradient-to-r from-purple-500 via-pink-500 to-purple-600 transition-all duration-700 ease-out shadow-lg"
+            style={{ 
+              width: `${Math.min(progress, 100)}%`,
+              boxShadow: progress > 10 ? '0 0 10px rgba(168, 85, 247, 0.5)' : 'none'
+            }}
           />
         </div>
 
-        <p className="text-xs text-gray-500">
-          {progress > 0
-            ? `${Math.round(progress)}% complete`
-            : "Initializing..."}
-        </p>
+        <div className="space-y-1">
+          <p className="text-xs text-gray-500 font-medium">
+            {progress > 0
+              ? `${Math.round(progress)}% complete`
+              : "🎬 Starting..."}
+          </p>
+          
+          {/* Fun fact display */}
+          <p className="text-xs text-purple-600 italic animate-fade-in min-h-[1rem]">
+            {funFacts[currentFact]}
+          </p>
+        </div>
 
-        {/* Cancel button */}
+        {/* Cancel button with better styling */}
         {onCancel && (
           <button
             onClick={onCancel}
-            className="mt-4 px-4 py-2 text-sm text-gray-600 hover:text-gray-800 transition-colors"
+            className="mt-6 px-6 py-2 text-sm text-gray-600 hover:text-red-600 border border-gray-300 hover:border-red-300 rounded-full transition-all duration-200 hover:scale-105"
           >
-            Cancel
+            ❌ Cancel
           </button>
         )}
       </div>
