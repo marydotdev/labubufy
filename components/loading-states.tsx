@@ -80,9 +80,9 @@ export function GenerationProgress({
     "✨ Adding magical touches to your photo...",
     "🌟 Creating something amazing just for you...",
     "🎭 Your Labubu is getting ready to pose...",
-    "💫 Almost there! Putting the finishing touches...",
+    "💫 Almost there...",
   ];
-  
+
   // Rotate message every 3 seconds
   const [currentMessage, setCurrentMessage] = React.useState(0);
   React.useEffect(() => {
@@ -93,21 +93,21 @@ export function GenerationProgress({
   }, [messages.length]);
 
   // Fun facts about Labubu to show while waiting
-  const funFacts = [
-    "💡 Labubu was created by Hong Kong artist Kasing Lung in 2015",
-    "🦷 Those signature teeth were inspired by Nordic folklore",
-    "🌍 Labubu has fans all around the world!",
-    "🎨 Each Labubu has its own unique personality",
-    "⭐ You're about to create a one-of-a-kind Labubu memory!",
-  ];
-  
-  const [currentFact, setCurrentFact] = React.useState(0);
-  React.useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentFact((prev) => (prev + 1) % funFacts.length);
-    }, 4000);
-    return () => clearInterval(interval);
-  }, [funFacts.length]);
+  // const funFacts = [
+  //   "💡 Labubu was created by Hong Kong artist Kasing Lung in 2015",
+  //   "🦷 Those signature teeth were inspired by Nordic folklore",
+  //   "🌍 Labubu has fans all around the world!",
+  //   "🎨 Each Labubu has its own unique personality",
+  //   "⭐ You're about to create a one-of-a-kind Labubu memory!",
+  // ];
+
+  // const [currentFact, setCurrentFact] = React.useState(0);
+  // React.useEffect(() => {
+  //   const interval = setInterval(() => {
+  //     setCurrentFact((prev) => (prev + 1) % funFacts.length);
+  //   }, 4000);
+  //   return () => clearInterval(interval);
+  // }, [funFacts.length]);
 
   return (
     <div
@@ -129,13 +129,13 @@ export function GenerationProgress({
         <h3 className="text-lg font-semibold text-gray-900 animate-fade-in">
           {messages[currentMessage]}
         </h3>
-        
+
         {/* Time remaining with more encouraging language */}
         <p className="text-sm text-gray-600">
           {status === "starting" && "🚀 Getting everything ready..."}
           {status === "processing" && estimatedTime > 0 && (
-            estimatedTime > 30 ? "⏳ This is worth the wait!" : 
-            estimatedTime > 15 ? "🎯 Almost done!" : 
+            estimatedTime > 30 ? "⏳ This is worth the wait!" :
+            estimatedTime > 15 ? "🎯 Almost done!" :
             "🎉 Just a few more seconds!"
           )}
           {status === "processing" && estimatedTime === 0 && "🔮 Working some AI magic..."}
@@ -143,10 +143,10 @@ export function GenerationProgress({
         </p>
 
         {/* Enhanced progress bar with glow effect */}
-        <div className="w-64 h-3 bg-gray-200 rounded-full overflow-hidden shadow-inner">
+        <div className="w-64 mx-auto h-3 bg-gray-200 rounded-full overflow-hidden shadow-inner">
           <div
             className="h-full bg-gradient-to-r from-purple-500 via-pink-500 to-purple-600 transition-all duration-700 ease-out shadow-lg"
-            style={{ 
+            style={{
               width: `${Math.min(progress, 100)}%`,
               boxShadow: progress > 10 ? '0 0 10px rgba(168, 85, 247, 0.5)' : 'none'
             }}
@@ -159,11 +159,11 @@ export function GenerationProgress({
               ? `${Math.round(progress)}% complete`
               : "🎬 Starting..."}
           </p>
-          
+
           {/* Fun fact display */}
-          <p className="text-xs text-purple-600 italic animate-fade-in min-h-[1rem]">
+          {/* <p className="text-xs text-purple-600 italic animate-fade-in min-h-[1rem]">
             {funFacts[currentFact]}
-          </p>
+          </p> */}
         </div>
 
         {/* Cancel button with better styling */}
@@ -220,7 +220,7 @@ export function LoadingOverlay({
           <div className="text-center">
             <p className="font-medium text-gray-900">{message}</p>
             {progress !== undefined && (
-              <div className="mt-3 w-full">
+              <div className="mt-3 w-full flex">
                 <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
                   <div
                     className="h-full bg-purple-500 transition-all duration-300"

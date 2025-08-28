@@ -8,6 +8,8 @@ import {
   Share2,
   History,
   MessageCircleQuestionMark,
+  Rewind,
+  RefreshCcw,
 } from "lucide-react";
 import { LabubuSelection } from "@/components/labubu-selection";
 import { ImageUpload, ImagePreview } from "@/components/image-upload";
@@ -124,7 +126,7 @@ export default function LabubufyApp() {
         } else {
           setGenerationStatus(status.status || "processing");
         }
-        
+
         console.log(`🔄 Status: ${status.status}, Progress: ${status.progress}%`);
 
         // CRITICAL: Only handle completion when status is 'succeeded'
@@ -238,6 +240,8 @@ export default function LabubufyApp() {
   const handleGenerate = async () => {
     if (!uploadedFile || selectedLabubu === null) return;
 
+
+
     try {
       setError(null);
       setIsGenerating(true);
@@ -337,12 +341,14 @@ export default function LabubufyApp() {
     }
   };
 
+
   return (
     <div className="min-h-screen flex flex-col">
       {/* Header */}
-      <header className="sticky border-b border-purple-dark bg-white px-4 py-3">
-        <div className="max-w-6xl mx-auto flex items-center justify-between px-2">
-          <Link href="/">
+      <header className="px-4 py-3">
+        <div className="bg-white max-w-6xl mx-auto flex items-center justify-between px-2 py-3 rounded-xl">
+          <div className="h-8 w-24"></div>
+          {/* <Link href="/">
             <Button
               variant="outline"
               size="sm"
@@ -351,7 +357,7 @@ export default function LabubufyApp() {
               <MessageCircleQuestionMark className="h-4 w-4" />
               More
             </Button>
-          </Link>
+          </Link> */}
           <Link href="/">
             <Image
               src="/LabubufyLogo.png"
@@ -390,10 +396,10 @@ export default function LabubufyApp() {
       {/* bg-[url('/asfalt-light.png')] */}
       {/* Main Content */}
       <div className="flex-1 p-2 sm:p-4">
-        <div className="max-w-6xl w-full mx-auto border-2 border-purple-dark bg-white rounded-xl overflow-hidden min-h-[calc(100vh-8rem)] sm:h-[80vh]">
+        <div className="max-w-6xl w-full mx-auto bg-white rounded-xl overflow-hidden min-h-[calc(100vh-8rem)] sm:h-[80vh]">
           <div className="flex flex-col-reverse sm:flex-row h-full ">
             {/* Left Panel - Labubu Selection */}
-            <div className="w-full sm:w-1/2 p-3 sm:p-6 sm:border-r border-purple-dark flex flex-col overflow-y-auto bg-gray-200  ">
+            <div className="w-full sm:w-1/2 p-3 sm:p-6  flex flex-col overflow-y-auto">
               <div className="w-full h-fit max-w-sm mx-auto flex-1 flex flex-col justify-center py-2">
                 {/* Labubu Selection Grid */}
                 <LabubuSelection
@@ -466,8 +472,23 @@ export default function LabubufyApp() {
                       <Share2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
                       Share
                     </Button>
+                    <Button
+                      variant="outline"
+                      className="flex-1 border-purple-dark text-purple-dark hover:bg-purple-dark hover:text-white py-2 sm:py-3 bg-white text-xs sm:text-sm"
+                      onClick={() => {
+                        setGeneratedImage(null);
+                        setGeneratedBlob(null);
+                        setUploadedImage(null);
+                        setUploadedFile(null);
+                        setSelectedLabubu(null);
+                        setError(null);
+                      }}
+                    >
+                      <RefreshCcw className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                      Reset
+                    </Button>
                   </div>
-                  <Button
+                  {/* <Button
                     variant="outline"
                     className="w-full border-black text-black hover:bg-black hover:text-white py-2 sm:py-3 bg-white text-xs sm:text-sm"
                     onClick={() => {
@@ -480,7 +501,7 @@ export default function LabubufyApp() {
                     }}
                   >
                     Reset
-                  </Button>
+                  </Button> */}
                 </div>
               )}
             </div>
