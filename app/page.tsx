@@ -428,7 +428,7 @@ export default function LabubufyApp() {
             {/* Right Panel - Upload/Result */}
             <div className="w-full sm:w-1/2 bg-white flex flex-col p-3 sm:p-6 overflow-y-auto">
               {/* Main content area */}
-              <div className="flex-1 flex items-center justify-center min-h-[300px]">
+              <div className="flex-1 flex items-center justify-center sm:min-h-[300px]">
                 {isGenerating ? (
                   <GenerationProgress
                     progress={generationProgress}
