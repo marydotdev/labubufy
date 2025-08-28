@@ -101,23 +101,24 @@ export default function LabubufyApp() {
         setGenerationProgress(status.progress);
         setEstimatedTime(status.estimated_time || 0);
 
-        // Update status message based on step
-        if (status.step === 1) {
-          setGenerationStatus("Merging images...");
-          console.log(
-            `🔄 Step 1: Merging images... Progress: ${status.progress}%`
-          );
-        } else if (status.step === 2) {
-          setGenerationStatus("Creating final image...");
-          console.log(
-            `🔄 Step 2: Creating final image... Progress: ${status.progress}%`
-          );
+        // Update status message for single-step generation with encouraging messages
+        if (status.status === "starting") {
+          setGenerationStatus("🚀 Getting ready to create magic...");
+        } else if (status.status === "processing") {
+          if (status.progress < 20) {
+            setGenerationStatus("🎨 AI is analyzing your photo...");
+          } else if (status.progress < 50) {
+            setGenerationStatus("✨ Blending you with your Labubu...");
+          } else if (status.progress < 80) {
+            setGenerationStatus("🎭 Adding the finishing touches...");
+          } else {
+            setGenerationStatus("🌟 Almost ready to reveal your photo...");
+          }
         } else {
           setGenerationStatus(status.status || "processing");
-          console.log(
-            `🔄 Status: ${status.status}, Progress: ${status.progress}%`
-          );
         }
+        
+        console.log(`🔄 Status: ${status.status}, Progress: ${status.progress}%`);
 
         // CRITICAL: Only handle completion when status is 'succeeded'
         if (status.status === "succeeded") {
@@ -189,7 +190,7 @@ export default function LabubufyApp() {
         ) {
           // Continue polling if still processing
           console.log(
-            `⏳ Still processing... Step ${status.step}/${status.total_steps}, Progress: ${status.progress}%`
+            `⏳ Still processing... Progress: ${status.progress}%`
           );
           console.log(`⏰ Estimated time remaining: ${status.estimated_time}s`);
         } else {
@@ -224,7 +225,7 @@ export default function LabubufyApp() {
         setGenerationStatus("");
         setCurrentPredictionId(null);
       }
-    }, 120000); // 2 minutes
+    }, 90000); // 1.5 minutes for single-step generation
   };
 
   const handleGenerate = async () => {
@@ -235,7 +236,7 @@ export default function LabubufyApp() {
       setIsGenerating(true);
       setGenerationProgress(0);
       setEstimatedTime(0);
-      setGenerationStatus("Starting...");
+      setGenerationStatus("🎬 Starting your Labubu transformation...");
 
       console.log(`🎬 Starting generation for Labubu ${selectedLabubu}`);
 
