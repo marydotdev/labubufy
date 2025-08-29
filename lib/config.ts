@@ -30,7 +30,7 @@ export const AI_CONFIG = {
   MODEL: "google/nano-banana",
   // Alternative preview version: "google/gemini-2-5-flash-image-preview"
   PROMPT_TEMPLATE:
-    "Create a photo of the person holding this Labubu doll. Make it look natural and realistic, maintaining the person's appearance exactly as shown.",
+    "Create a photo of the person holding this Labubu doll. Make it look natural and realistic, maintaining the person's appearance exactly as shown. The height of the doll is 14.5 inches and the width is 7.8 inches.",
   MAX_TOKENS: 1290, // Based on Google's pricing info
   QUALITY: "high",
 } as const;
@@ -191,11 +191,31 @@ export function getLabubuName(labubu_id: number): string {
 
 // Enhanced prompting strategy for different Labubu types
 export function generatePrompt(labubuId: number): string {
-  const labubu = LABUBU_OPTIONS.find(l => l.id === labubuId);
+  const labubu = LABUBU_OPTIONS.find((l) => l.id === labubuId);
 
-  if (labubu?.type === 'keychain') {
-    return `"Show the person holding the Labubu keychain naturally in their hands, keeping their exact appearance, pose, and background unchanged. The keychain should appear as if it was always part of the original photo."`;
+  if (labubu?.type === "keychain") {
+    return `Seamlessly integrate a small Labubu keychain (7.8 inches tall, 2.7 inches wide) into the person's existing visible hands in this photo. Requirements:
+- Use ONLY the hands already visible in the photo - do not add extra hands or limbs
+- Person holds the keychain naturally with realistic hand positioning and grip
+- If only one hand is visible (e.g., selfie), use that single hand to hold the keychain
+- Keychain appears at correct scale relative to human hands
+- Maintain all original lighting, shadows, and color temperature
+- Preserve person's exact facial features, clothing, pose, and background
+- Add subtle cast shadows from the keychain onto hands/clothing
+- Match the keychain's material properties (likely vinyl/plastic with slight sheen)
+- Ensure the keychain's proportions look believable for the person's hand size
+- Blend seamlessly as if photographed together originally`;
   } else {
-    return `"Show the person holding the Labubu doll naturally in their hands, keeping their exact appearance, pose, and background unchanged. The doll should appear as if it was always part of the original photo."`;
+    return `Seamlessly integrate a Labubu doll (14.5 inches tall, 7.8 inches wide) into the person's existing visible hands in this photo. Requirements:
+- Use ONLY the hands already visible in the photo - do not add extra hands or limbs
+- If both hands visible: person holds doll with both hands in comfortable grip
+- If only one hand visible (e.g., selfie): person holds doll with that single hand against their body/chest for support
+- Doll appears at correct scale - significant but not oversized for human hands
+- Maintain all original lighting conditions, shadows, and ambient color
+- Preserve person's exact facial expression, clothing, pose, and entire background
+- Add realistic cast shadows from the doll onto the person and surroundings
+- Match doll's vinyl/plastic material properties with appropriate surface reflection
+- Ensure hand positioning looks natural for holding an object of this size and weight
+- Create perfect photographic integration as if taken in a single shot`;
   }
 }
