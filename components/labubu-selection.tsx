@@ -30,27 +30,27 @@ export function LabubuSelection({
             onClick={() => setActiveTab("dolls")}
             className={cn(
               "flex-1 py-2 px-4 text-sm font-medium rounded-md transition-all duration-200",
-              "focus:outline-none focus:ring-2 focus:ring-purple-dark focus:ring-offset-2",
+              "focus:outline-none ",
               activeTab === "dolls"
                 ? "bg-purple-dark text-white shadow-sm"
                 : "text-black hover:bg-purple-50"
             )}
             aria-pressed={activeTab === "dolls"}
           >
-            Dolls
+            Big Boys
           </button>
           <button
             onClick={() => setActiveTab("keychains")}
             className={cn(
               "flex-1 py-2 px-4 text-sm font-medium rounded-md transition-all duration-200",
-              "focus:outline-none focus:ring-2 focus:ring-purple-dark focus:ring-offset-2",
+              "focus:outline-none ",
               activeTab === "keychains"
                 ? "bg-purple-dark text-white shadow-sm"
                 : "text-black hover:bg-purple-50"
             )}
             aria-pressed={activeTab === "keychains"}
           >
-            Keychains
+            Babies
           </button>
         </div>
       </div>

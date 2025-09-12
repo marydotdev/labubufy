@@ -343,42 +343,33 @@ export default function LabubufyApp() {
 
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col font-sans">
       {/* Header */}
-      <header className="px-4 py-3">
-        <div className="bg-white max-w-6xl mx-auto flex items-center justify-center sm:justify-between px-2 py-3 rounded-xl">
-          <div className="hidden sm:block h-8 w-24"></div>
-          {/* <Link href="/">
-            <Button
-              variant="outline"
-              size="sm"
-              className="flex items-center gap-2 border-black text-black hover:bg-purple-50"
-            >
-              <MessageCircleQuestionMark className="h-4 w-4" />
-              More
-            </Button>
-          </Link> */}
-          <Link href="/">
-            <Image
-              src="/LabubufyLogo.png"
-              alt="Labubufy"
-              width={200}
-              height={200}
-            />
+
+      <header className="px-4 py-3 max-w-6xl mx-auto w-full flex justify-between items-center">
+        <div className="w-1/4">
+          <div className="w-full flex justify-start">
+            <Link href="/" className="bg-pink-400 rounded-full px-6 py-2">
+              <h1 className="text-sm sm:text-2xl font-bold text-white">Menu</h1>
+            </Link>
+          </div>
+        </div>
+        <div className="bg-purple-dark rounded-full px-6 py-2 sm:hover:scale-105 sm:hover:-rotate-2 transition-all duration-300">
+          <Link href="/" className="">
+            <h1 className="text-2xl sm:text-4xl font-bold text-white font-zubilo-black">
+              Labubufy!
+            </h1>
           </Link>
-          <div className="hidden sm:block h-8 w-24">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowHistory(!showHistory)}
-              className=" sm:flex items-center gap-2 border-black text-black hover:bg-purple-50"
-            >
-              <History className="h-4 w-4" />
-              History
-            </Button>
+        </div>
+        <div className="w-1/4">
+          <div className="w-full flex justify-end">
+            <Link href="/" className="bg-yellow-500 rounded-full px-6 py-2">
+              <h1 className="text-sm sm:text-2xl font-bold text-white">500</h1>
+            </Link>
           </div>
         </div>
       </header>
+
       {/* Error Display */}
       {error && (
         <div className="bg-red-50 border-l-4 border-red-400 p-4 mx-4 mt-4">
@@ -395,13 +386,13 @@ export default function LabubufyApp() {
           </div>
         </div>
       )}
-      {/* bg-[url('/asfalt-light.png')] */}
+
       {/* Main Content */}
-      <div className="flex-1 p-2 sm:p-4">
-        <div className="max-w-6xl w-full mx-auto bg-white rounded-xl overflow-hidden min-h-[calc(100vh-8rem)] sm:h-[80vh]">
+      <div className="flex-1 p-2 sm:p-4 ">
+        <div className="border-3 border-zinc-900 max-w-6xl w-full mx-auto bg-zinc-50 rounded-3xl overflow-hidden min-h-[calc(100vh-8rem)] sm:h-[80vh] shadow-2xl">
           <div className="flex flex-col-reverse sm:flex-row h-full ">
             {/* Left Panel - Labubu Selection */}
-            <div className="w-full sm:w-1/2 p-3 sm:p-6  flex flex-col overflow-y-auto">
+            <div className="w-full sm:w-1/2 p-3 sm:p-6 bg-zinc-50 flex flex-col overflow-y-auto">
               <div className="w-full h-fit max-w-sm mx-auto flex-1 flex flex-col justify-center py-2">
                 {/* Labubu Selection Grid */}
                 <LabubuSelection
@@ -413,20 +404,20 @@ export default function LabubufyApp() {
                 {/* Generate button */}
                 <div className="flex-shrink-0 mt-4">
                   <Button
-                    className="w-full bg-purple-dark hover:bg-purple-light text-white py-3 sm:py-5 text-sm sm:text-base font-medium"
+                    className="w-full bg-purple-dark hover:bg-purple-light text-white py-3 sm:py-5 text-sm sm:text-xl font-medium font-zubilo-black disabled:opacity-100 disabled:ring-2 disabled:ring-purple-dark disabled:ring-offset-2"
                     onClick={handleGenerate}
                     disabled={
                       !uploadedFile || selectedLabubu === null || isGenerating
                     }
                   >
-                    {isGenerating ? "Generating..." : "Generate Photo"}
+                    {isGenerating ? "Labubufying..." : "Labubufy!"}
                   </Button>
                 </div>
               </div>
             </div>
 
             {/* Right Panel - Upload/Result */}
-            <div className="w-full sm:w-1/2 bg-white flex flex-col p-3 sm:p-6 overflow-y-auto">
+            <div className="w-full sm:w-1/2 bg-zinc-200 flex flex-col p-3 sm:p-6 overflow-y-auto">
               {/* Main content area */}
               <div className="flex-1 flex items-center justify-center sm:min-h-[300px]">
                 {isGenerating ? (
@@ -456,7 +447,7 @@ export default function LabubufyApp() {
 
               {/* Bottom action buttons - only show when image is generated */}
               {generatedImage && (
-                <div className="flex-shrink-0 mt-4 space-y-3 pb-2">
+                <div className="flex-shrink-0 mt-4 space-y-3 pb-2 font-sans">
                   <div className="flex gap-2 sm:gap-3">
                     <Button
                       variant="outline"
@@ -510,11 +501,15 @@ export default function LabubufyApp() {
           </div>
         </div>
       </div>
-      {/* History Gallery Modal */}
-      <HistoryGallery
-        isOpen={showHistory}
-        onClose={() => setShowHistory(false)}
-      />
+
+      {/* Footer */}
+      <footer className="w-full bg-purple-dark sm:h-48">
+        <div className="max-w-6xl mx-auto w-full flex justify-between items-center py-12">
+          <h1 className="text-sm sm:text-2xl font-bold text-white">Footer</h1>
+          <h1 className="text-sm sm:text-2xl font-bold text-white">Footer</h1>
+          <h1 className="text-sm sm:text-2xl font-bold text-white">Footer</h1>
+        </div>
+      </footer>
     </div>
   );
 }

@@ -3,8 +3,10 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import localFont from "next/font/local";
 
-const myFont = localFont({
+const zubiloBlack = localFont({
   src: "../public/fonts/ZubiloBlack.woff2",
+  variable: "--font-zubilo-black",
+  display: "swap",
 });
 
 const geistSans = Geist({
@@ -18,7 +20,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Labubufy",
+  title: "Labubufy!",
   description: "Add Labubu to your photos",
   icons: {
     icon: ["/favicon.ico?v=4"],
@@ -36,7 +38,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} ${myFont.className} antialiased bg-[url('/subtle-white-feathers.png')]`}
+        className={`${geistSans.variable} ${geistMono.variable} ${zubiloBlack.variable} antialiased`}
       >
         {children}
       </body>
