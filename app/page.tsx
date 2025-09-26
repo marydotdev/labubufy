@@ -354,7 +354,7 @@ export default function LabubufyApp() {
             </Link>
           </div>
         </div>
-        <div className="bg-purple-dark rounded-full px-6 py-2 sm:hover:scale-105 sm:hover:-rotate-2 transition-all duration-300">
+        <div className="bg-violet-600 rounded-full px-6 py-2 sm:hover:scale-105 sm:hover:-rotate-2 transition-all duration-300">
           <Link href="/" className="">
             <h1 className="text-2xl sm:text-4xl font-bold text-white font-zubilo-black">
               Labubufy!
@@ -404,7 +404,7 @@ export default function LabubufyApp() {
                 {/* Generate button */}
                 <div className="flex-shrink-0 mt-4">
                   <Button
-                    className="w-full bg-purple-dark hover:bg-purple-light text-white py-3 sm:py-5 text-sm sm:text-xl font-medium font-zubilo-black disabled:opacity-100 disabled:ring-2 disabled:ring-purple-dark disabled:ring-offset-2"
+                    className="w-full bg-violet-600 hover:bg-violet-700 text-white py-3 sm:py-5 text-sm sm:text-xl font-medium font-zubilo-black disabled:opacity-100 disabled:ring-2 disabled:ring-violet-600 disabled:ring-offset-2"
                     onClick={handleGenerate}
                     disabled={
                       !uploadedFile || selectedLabubu === null || isGenerating
@@ -451,7 +451,7 @@ export default function LabubufyApp() {
                   <div className="flex gap-2 sm:gap-3">
                     <Button
                       variant="outline"
-                      className="flex-1 border-purple-dark text-purple-dark hover:bg-purple-dark hover:text-white py-2 sm:py-3 bg-white text-xs sm:text-sm"
+                      className="flex-1 border-violet-600 text-violet-600 hover:bg-violet-600 hover:text-white py-2 sm:py-3 bg-white text-xs sm:text-sm"
                       onClick={handleDownload}
                     >
                       <Download className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
@@ -459,7 +459,7 @@ export default function LabubufyApp() {
                     </Button>
                     <Button
                       variant="outline"
-                      className="flex-1 border-purple-dark text-purple-dark hover:bg-purple-dark hover:text-white py-2 sm:py-3 bg-white text-xs sm:text-sm"
+                      className="flex-1 border-violet-600 text-violet-600 hover:bg-violet-600 hover:text-white py-2 sm:py-3 bg-white text-xs sm:text-sm"
                       onClick={handleShare}
                     >
                       <Share2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
@@ -503,7 +503,7 @@ export default function LabubufyApp() {
       </div>
 
       {/* Footer */}
-      <footer className="w-full bg-purple-dark sm:h-48">
+      <footer className="w-full bg-violet-600 sm:h-48">
         <div className="max-w-6xl mx-auto w-full flex justify-between items-center py-12">
           <h1 className="text-sm sm:text-2xl font-bold text-white">Footer</h1>
           <h1 className="text-sm sm:text-2xl font-bold text-white">Footer</h1>

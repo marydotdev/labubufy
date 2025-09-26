@@ -1,7 +1,11 @@
 "use client";
 
 import React, { useState } from "react";
-import { LABUBU_DOLLS, LABUBU_KEYCHAINS, type LabubuOption } from "@/lib/config";
+import {
+  LABUBU_DOLLS,
+  LABUBU_KEYCHAINS,
+  type LabubuOption,
+} from "@/lib/config";
 import { cn } from "@/lib/utils";
 
 interface LabubuSelectionProps {
@@ -19,7 +23,8 @@ export function LabubuSelection({
 }: LabubuSelectionProps) {
   const [activeTab, setActiveTab] = useState<TabType>("dolls");
 
-  const currentOptions = activeTab === "dolls" ? LABUBU_DOLLS : LABUBU_KEYCHAINS;
+  const currentOptions =
+    activeTab === "dolls" ? LABUBU_DOLLS : LABUBU_KEYCHAINS;
 
   return (
     <div className={cn("w-full", className)}>
@@ -32,7 +37,7 @@ export function LabubuSelection({
               "flex-1 py-2 px-4 text-sm font-medium rounded-md transition-all duration-200",
               "focus:outline-none ",
               activeTab === "dolls"
-                ? "bg-purple-dark text-white shadow-sm"
+                ? "bg-violet-600 text-white shadow-sm"
                 : "text-black hover:bg-purple-50"
             )}
             aria-pressed={activeTab === "dolls"}
@@ -45,7 +50,7 @@ export function LabubuSelection({
               "flex-1 py-2 px-4 text-sm font-medium rounded-md transition-all duration-200",
               "focus:outline-none ",
               activeTab === "keychains"
-                ? "bg-purple-dark text-white shadow-sm"
+                ? "bg-violet-600 text-white shadow-sm"
                 : "text-black hover:bg-purple-50"
             )}
             aria-pressed={activeTab === "keychains"}
@@ -98,11 +103,11 @@ function LabubuCard({ labubu, isSelected, onSelect }: LabubuCardProps) {
       className={cn(
         "group relative aspect-square rounded-lg cursor-pointer transition-all duration-200 bg-white",
         "hover:scale-105 hover:shadow-lg border-2",
-        "focus:outline-none focus:ring-2 focus:ring-purple-dark focus:ring-offset-2",
+        "focus:outline-none focus:ring-2 focus:ring-violet-600 focus:ring-offset-2",
 
         isSelected
-          ? "border-purple-dark scale-105 shadow-lg"
-          : "border-black hover:border-purple-dark"
+          ? "border-violet-600 scale-105 shadow-lg"
+          : "border-black hover:border-violet-600"
       )}
       onClick={onSelect}
       onKeyDown={(e) => {
@@ -127,7 +132,7 @@ function LabubuCard({ labubu, isSelected, onSelect }: LabubuCardProps) {
 
       {/* Selection indicator */}
       {isSelected && (
-        <div className="absolute -top-2 -right-2 w-6 h-6 bg-purple-dark rounded-full flex items-center justify-center">
+        <div className="absolute -top-2 -right-2 w-6 h-6 bg-violet-600 rounded-full flex items-center justify-center">
           <svg
             className="w-4 h-4 text-white"
             fill="none"

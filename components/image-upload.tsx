@@ -27,7 +27,9 @@ export function ImageUpload({
       await fileValidator.validateImageDimensions(file);
 
       // Optimize image for processing
-      const { file: optimizedFile } = await imageUtils.optimizeForProcessing(file);
+      const { file: optimizedFile } = await imageUtils.optimizeForProcessing(
+        file
+      );
 
       const previewUrl = await imageUtils.fileToBase64(optimizedFile);
       onImageUpload(optimizedFile, previewUrl);
@@ -37,7 +39,9 @@ export function ImageUpload({
     }
   };
 
-  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -45,7 +49,7 @@ export function ImageUpload({
 
     // Reset input
     if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+      fileInputRef.current.value = "";
     }
   };
 
@@ -83,18 +87,20 @@ export function ImageUpload({
         onDrop={handleDrop}
         onClick={() => fileInputRef.current?.click()}
       >
-        <Upload className="h-10 w-10 sm:h-12 sm:w-12 text-purple-dark mb-3 sm:mb-4" />
+        <Upload className="h-10 w-10 sm:h-12 sm:w-12 text-violet-600 mb-3 sm:mb-4" />
         <p className="hidden sm:block text-black text-sm sm:text-base text-center px-4">
           Drop image here or click to upload
         </p>
-        <p className="hidden sm:block text-gray-600 text-xs mt-1">JPG, PNG, WebP up to 100MB</p>
+        <p className="hidden sm:block text-gray-600 text-xs mt-1">
+          JPG, PNG, WebP up to 100MB
+        </p>
       </div>
 
       {/* Action buttons */}
       <div className="hidden sm:flex gap-3 mt-4 justify-center">
         <Button
           onClick={() => fileInputRef.current?.click()}
-          className="bg-purple-dark hover:bg-purple-light text-white text-sm sm:text-base px-6 py-3"
+          className="bg-violet-600 hover:bg-violet-500 text-white text-sm sm:text-base px-6 py-3"
         >
           <Upload className="h-4 w-4 mr-2" />
           Choose Photo
