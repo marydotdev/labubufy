@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { LabubuSelection } from "@/components/labubu-selection";
 import { ImageUpload, ImagePreview } from "@/components/image-upload";
+import { TestPhotos } from "@/components/test-photos";
 import { GenerationProgress } from "@/components/loading-states";
 import { HistoryGallery } from "@/components/history-gallery";
 import { errorHandler } from "@/lib/errors";
@@ -53,6 +54,7 @@ export default function LabubufyApp() {
   const [currentPredictionId, setCurrentPredictionId] = useState<string | null>(
     null
   );
+  const [isTestPhoto, setIsTestPhoto] = useState(false);
 
   // Cleanup on component unmount
   React.useEffect(() => {
@@ -66,6 +68,7 @@ export default function LabubufyApp() {
   const handleImageUpload = (file: File, previewUrl: string) => {
     setUploadedFile(file);
     setUploadedImage(previewUrl);
+    setIsTestPhoto(false); // Reset test photo flag for real uploads
     setError(null);
   };
 
@@ -74,10 +77,27 @@ export default function LabubufyApp() {
     setUploadedImage(null);
     setGeneratedImage(null);
     setGeneratedBlob(null);
+    setSelectedLabubu(null);
+    setIsTestPhoto(false);
   };
 
   const handleUploadError = (errorMessage: string) => {
     setError(errorMessage);
+  };
+
+  const handleTestPhotoSelect = (originalImage: string) => {
+    // Set the original image as uploaded (like a real upload)
+    setUploadedImage(originalImage);
+
+    // Clear any existing generated image
+    setGeneratedImage(null);
+    setGeneratedBlob(null);
+
+    // Mark as test photo
+    setIsTestPhoto(true);
+
+    // Clear any errors
+    setError(null);
   };
 
   // Polling state
@@ -127,7 +147,9 @@ export default function LabubufyApp() {
           setGenerationStatus(status.status || "processing");
         }
 
-        console.log(`🔄 Status: ${status.status}, Progress: ${status.progress}%`);
+        console.log(
+          `🔄 Status: ${status.status}, Progress: ${status.progress}%`
+        );
 
         // CRITICAL: Only handle completion when status is 'succeeded'
         if (status.status === "succeeded") {
@@ -198,9 +220,7 @@ export default function LabubufyApp() {
           status.status === "starting"
         ) {
           // Continue polling if still processing
-          console.log(
-            `⏳ Still processing... Progress: ${status.progress}%`
-          );
+          console.log(`⏳ Still processing... Progress: ${status.progress}%`);
           console.log(`⏰ Estimated time remaining: ${status.estimated_time}s`);
         } else {
           console.warn(`🤔 Unexpected status: ${status.status}`);
@@ -238,9 +258,7 @@ export default function LabubufyApp() {
   };
 
   const handleGenerate = async () => {
-    if (!uploadedFile || selectedLabubu === null) return;
-
-
+    if (!uploadedImage || selectedLabubu === null) return;
 
     try {
       setError(null);
@@ -250,6 +268,79 @@ export default function LabubufyApp() {
       setGenerationStatus("🎬 Starting your Labubu transformation...");
 
       console.log(`🎬 Starting generation for Labubu ${selectedLabubu}`);
+
+      // Check if this is a test photo
+      if (isTestPhoto) {
+        // For test photos, use pre-generated images
+        console.log(
+          `🎭 Using pre-generated test photo for Labubu ${selectedLabubu}`
+        );
+
+        // Determine which test photo is being used
+        let testPhotoNumber = 1;
+        if (uploadedImage.includes("original2")) testPhotoNumber = 2;
+        else if (uploadedImage.includes("original3")) testPhotoNumber = 3;
+        else if (uploadedImage.includes("original4")) testPhotoNumber = 4;
+
+        // Simulate loading progress for test photos
+        const progressInterval = setInterval(() => {
+          setGenerationProgress((prev) => {
+            if (prev >= 100) {
+              clearInterval(progressInterval);
+              return 100;
+            }
+            return prev + 2; // Increment by 2% every 100ms
+          });
+        }, 100);
+
+        // Update status messages
+        const statusMessages = [
+          "🎨 AI is analyzing your test photo...",
+          "✨ Blending you with your Labubu...",
+          "🎭 Adding the finishing touches...",
+          "🌟 Almost ready to reveal your photo...",
+        ];
+
+        let messageIndex = 0;
+        const messageInterval = setInterval(() => {
+          if (messageIndex < statusMessages.length) {
+            setGenerationStatus(statusMessages[messageIndex]);
+            messageIndex++;
+          }
+        }, 1250);
+
+        // Simulate 5-second loading
+        setTimeout(() => {
+          clearInterval(progressInterval);
+          clearInterval(messageInterval);
+          setGenerationProgress(100);
+          setGenerationStatus("✅ Test generation complete!");
+
+          // Small delay to show completion
+          setTimeout(() => {
+            const generatedImageUrl = `/test-photos/generated${testPhotoNumber}_labubu${selectedLabubu}.svg`;
+            setGeneratedImage(generatedImageUrl);
+
+            // Create a mock blob for download functionality
+            fetch(generatedImageUrl)
+              .then((response) => response.blob())
+              .then((blob) => setGeneratedBlob(blob))
+              .catch(console.error);
+
+            setIsGenerating(false);
+            setGenerationProgress(0);
+            setEstimatedTime(0);
+            setGenerationStatus("");
+          }, 200);
+        }, 5000);
+
+        return;
+      }
+
+      // For real photos, use the API
+      if (!uploadedFile) {
+        throw new Error("No file uploaded for generation");
+      }
 
       // Convert file to base64 for API
       const imageBase64 = await imageUtils.fileToBase64(uploadedFile);
@@ -341,7 +432,6 @@ export default function LabubufyApp() {
     }
   };
 
-
   return (
     <div className="min-h-screen flex flex-col font-sans">
       {/* Header */}
@@ -407,7 +497,7 @@ export default function LabubufyApp() {
                     className="w-full bg-violet-600 hover:bg-violet-700 text-white py-3 sm:py-5 text-sm sm:text-xl font-medium font-zubilo-black disabled:opacity-100 disabled:ring-2 disabled:ring-violet-600 disabled:ring-offset-2"
                     onClick={handleGenerate}
                     disabled={
-                      !uploadedFile || selectedLabubu === null || isGenerating
+                      !uploadedImage || selectedLabubu === null || isGenerating
                     }
                   >
                     {isGenerating ? "Labubufying..." : "Labubufy!"}
@@ -438,10 +528,15 @@ export default function LabubufyApp() {
                     onRemove={handleImageRemove}
                   />
                 ) : (
-                  <ImageUpload
-                    onImageUpload={handleImageUpload}
-                    onError={handleUploadError}
-                  />
+                  <div className="w-full">
+                    <ImageUpload
+                      onImageUpload={handleImageUpload}
+                      onError={handleUploadError}
+                    />
+                    <div className="mt-6">
+                      <TestPhotos onTestPhotoSelect={handleTestPhotoSelect} />
+                    </div>
+                  </div>
                 )}
               </div>
 
@@ -474,6 +569,7 @@ export default function LabubufyApp() {
                         setUploadedImage(null);
                         setUploadedFile(null);
                         setSelectedLabubu(null);
+                        setIsTestPhoto(false);
                         setError(null);
                       }}
                     >

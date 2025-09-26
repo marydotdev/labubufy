@@ -89,7 +89,7 @@ export function ImageUpload({
       >
         <Upload className="h-10 w-10 sm:h-12 sm:w-12 text-violet-600 mb-3 sm:mb-4" />
         <p className="hidden sm:block text-black text-sm sm:text-base text-center px-4">
-          Drop image here or click to upload
+          Drop image here <br /> or click to upload
         </p>
         <p className="hidden sm:block text-gray-600 text-xs mt-1">
           JPG, PNG, WebP up to 100MB
@@ -125,7 +125,11 @@ interface ImagePreviewProps {
   className?: string;
 }
 
-export function ImagePreview({ imageUrl, className }: ImagePreviewProps) {
+export function ImagePreview({
+  imageUrl,
+  onRemove,
+  className,
+}: ImagePreviewProps) {
   return (
     <div className={cn("relative text-center", className)}>
       <img
@@ -133,6 +137,27 @@ export function ImagePreview({ imageUrl, className }: ImagePreviewProps) {
         alt="Uploaded preview"
         className="max-w-full max-h-[50vh] sm:max-h-[55vh] md:max-h-[60vh] object-contain rounded-lg shadow-lg"
       />
+      {onRemove && (
+        <button
+          onClick={onRemove}
+          className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white rounded-full w-8 h-8 flex items-center justify-center shadow-lg transition-colors duration-200 z-10"
+          aria-label="Remove image"
+        >
+          <svg
+            className="w-4 h-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M6 18L18 6M6 6l12 12"
+            />
+          </svg>
+        </button>
+      )}
     </div>
   );
 }
