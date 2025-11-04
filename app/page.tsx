@@ -1,27 +1,29 @@
 "use client";
 
-import React from "react";
-import { useState } from "react";
+import React, { useState } from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import {
-  Download,
-  Share2,
-  History,
-  MessageCircleQuestionMark,
-  Rewind,
-  RefreshCcw,
-} from "lucide-react";
+import { ImageUpload } from "@/components/image-upload";
 import { LabubuSelection } from "@/components/labubu-selection";
-import { ImageUpload, ImagePreview } from "@/components/image-upload";
-import { TestPhotos } from "@/components/test-photos";
-import { GenerationProgress } from "@/components/loading-states";
-import { HistoryGallery } from "@/components/history-gallery";
-import { errorHandler } from "@/lib/errors";
-import { imageUtils, formatUtils, urlUtils } from "@/lib/utils";
 import { imageStorage } from "@/lib/storage";
 import { sharingService } from "@/lib/sharing";
-import Image from "next/image";
-import Link from "next/link";
+import { imageUtils, formatUtils, urlUtils } from "@/lib/utils";
+import { errorHandler } from "@/lib/errors";
+import { HistoryGallery } from "@/components/history-gallery";
+import { LoadingOverlay } from "@/components/loading-states";
+import { ImagePreview } from "@/components/image-upload";
+import { GenerationProgress } from "@/components/loading-states";
+import { TestPhotos } from "@/components/test-photos";
+import { CreditsDisplay } from "@/components/user-credits";
+import { SaveAccountModal } from "@/components/save-account-modal";
+import { SaveAccountBanner } from "@/components/save-account-banner";
+import { SignInModal } from "@/components/sign-in-modal";
+import { userService } from "@/lib/user-service";
+import { Shield, LogIn } from "lucide-react";
+import { AccountMenu } from "@/components/account-menu";
+import { HelpModal } from "@/components/help-modal";
+import { MobileMenu } from "@/components/mobile-menu";
+import { HelpCircle } from "lucide-react";
 
 interface GenerationRequest {
   image: string;
@@ -55,6 +57,18 @@ export default function LabubufyApp() {
     null
   );
   const [isTestPhoto, setIsTestPhoto] = useState(false);
+  const [userCredits, setUserCredits] = useState<number>(0);
+  const [showInsufficientCreditsModal, setShowInsufficientCreditsModal] =
+    useState(false);
+
+  // New state for account management
+  const [showSaveAccountModal, setShowSaveAccountModal] = useState(false);
+  const [showSignInModal, setShowSignInModal] = useState(false);
+  const [isAnonymous, setIsAnonymous] = useState(true);
+  const [justPurchased, setJustPurchased] = useState(false);
+
+  // Help modal state
+  const [showHelpModal, setShowHelpModal] = useState(false);
 
   // Cleanup on component unmount
   React.useEffect(() => {
@@ -65,10 +79,31 @@ export default function LabubufyApp() {
     };
   }, [currentPredictionId]);
 
+  // Check if user is anonymous
+  React.useEffect(() => {
+    const checkUserStatus = async () => {
+      const anonymous = userService.isAnonymous();
+      setIsAnonymous(anonymous);
+    };
+    checkUserStatus();
+  }, [userCredits]); // Re-check when credits update
+
+  // Check for successful payment and show save account modal
+  React.useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get("payment") === "success" && isAnonymous) {
+      setJustPurchased(true);
+      // Show save account modal after a short delay
+      setTimeout(() => {
+        setShowSaveAccountModal(true);
+      }, 1000);
+    }
+  }, [isAnonymous]);
+
   const handleImageUpload = (file: File, previewUrl: string) => {
     setUploadedFile(file);
     setUploadedImage(previewUrl);
-    setIsTestPhoto(false); // Reset test photo flag for real uploads
+    setIsTestPhoto(false);
     setError(null);
   };
 
@@ -86,18 +121,40 @@ export default function LabubufyApp() {
   };
 
   const handleTestPhotoSelect = (originalImage: string) => {
-    // Set the original image as uploaded (like a real upload)
     setUploadedImage(originalImage);
-
-    // Clear any existing generated image
     setGeneratedImage(null);
     setGeneratedBlob(null);
-
-    // Mark as test photo
     setIsTestPhoto(true);
-
-    // Clear any errors
     setError(null);
+  };
+
+  const handleCreditsUpdate = (credits: number) => {
+    setUserCredits(credits);
+  };
+
+  const handleAccountSaved = async () => {
+    // Refresh user status after saving account
+    const anonymous = userService.isAnonymous();
+    setIsAnonymous(anonymous);
+
+    // Refresh credits to get updated user info
+    await userService.refreshUserCredits();
+    const user = await userService.getCurrentUser();
+    if (user) {
+      setUserCredits(user.credits);
+    }
+  };
+
+  const handleSignInSuccess = async () => {
+    // Refresh user status after sign in
+    const anonymous = userService.isAnonymous();
+    setIsAnonymous(anonymous);
+
+    // Refresh credits
+    const user = await userService.getCurrentUser();
+    if (user) {
+      setUserCredits(user.credits);
+    }
   };
 
   // Polling state
@@ -124,13 +181,13 @@ export default function LabubufyApp() {
         }
 
         const status: StatusResponse = await response.json();
-        console.log(`📊 Raw status response:`, JSON.stringify(status, null, 2));
+        console.log(`📊 Status:`, status);
 
         // Update progress
         setGenerationProgress(status.progress);
         setEstimatedTime(status.estimated_time || 0);
 
-        // Update status message for single-step generation with encouraging messages
+        // Update status message
         if (status.status === "starting") {
           setGenerationStatus("🚀 Getting ready to create magic...");
         } else if (status.status === "processing") {
@@ -147,14 +204,9 @@ export default function LabubufyApp() {
           setGenerationStatus(status.status || "processing");
         }
 
-        console.log(
-          `🔄 Status: ${status.status}, Progress: ${status.progress}%`
-        );
-
-        // CRITICAL: Only handle completion when status is 'succeeded'
+        // Handle completion
         if (status.status === "succeeded") {
           console.log(`✅ Generation completed successfully!`);
-          console.log(`📸 Output received:`, status.output);
 
           const imageUrl = Array.isArray(status.output)
             ? status.output[0]
@@ -164,17 +216,7 @@ export default function LabubufyApp() {
             throw new Error("No image URL in completed result");
           }
 
-          console.log(`🖼️ Final image URL: ${imageUrl}`);
-
-          // Check if this is actually the final step 2 URL
-          if (!imageUrl.includes("replicate.delivery")) {
-            console.warn(
-              `⚠️ Image URL doesn't look like a Replicate URL: ${imageUrl}`
-            );
-          }
-
           // Download the final image
-          console.log(`📥 Downloading final image...`);
           const imageResponse = await fetch(imageUrl);
           if (!imageResponse.ok) {
             throw new Error(
@@ -183,15 +225,11 @@ export default function LabubufyApp() {
           }
 
           const blob = await imageResponse.blob();
-          console.log(`💾 Downloaded blob size: ${blob.size} bytes`);
 
           // Convert blob to data URL for display
           const reader = new FileReader();
           reader.onload = () => {
             const dataUrl = reader.result as string;
-            console.log(
-              `🎨 Setting generated image (data URL length: ${dataUrl.length})`
-            );
             setGeneratedImage(dataUrl);
           };
           reader.readAsDataURL(blob);
@@ -200,12 +238,10 @@ export default function LabubufyApp() {
 
           // Save to history
           if (uploadedFile && selectedLabubu !== null) {
-            console.log(`💾 Saving to history...`);
             await imageStorage.saveImage(uploadedFile, blob, selectedLabubu);
           }
 
           // Reset generation state
-          console.log(`🏁 Resetting generation state`);
           setIsGenerating(false);
           setGenerationProgress(0);
           setEstimatedTime(0);
@@ -214,16 +250,16 @@ export default function LabubufyApp() {
           stopPolling(predictionId);
         } else if (status.status === "failed") {
           console.error(`❌ Generation failed:`, status.error);
+
+          // Refund the credit
+          await handleRefundCredit(predictionId);
+
           throw new Error(status.error || "Generation failed");
         } else if (
           status.status === "processing" ||
           status.status === "starting"
         ) {
-          // Continue polling if still processing
           console.log(`⏳ Still processing... Progress: ${status.progress}%`);
-          console.log(`⏰ Estimated time remaining: ${status.estimated_time}s`);
-        } else {
-          console.warn(`🤔 Unexpected status: ${status.status}`);
         }
       } catch (err) {
         console.error("❌ Polling error:", err);
@@ -247,6 +283,10 @@ export default function LabubufyApp() {
       if (pollingInterval) {
         console.log(`⏰ Polling timeout reached for ${predictionId}`);
         stopPolling(predictionId);
+
+        // Refund credit on timeout
+        handleRefundCredit(predictionId).catch(console.error);
+
         setError("Generation timeout - please try again");
         setIsGenerating(false);
         setGenerationProgress(0);
@@ -254,74 +294,80 @@ export default function LabubufyApp() {
         setGenerationStatus("");
         setCurrentPredictionId(null);
       }
-    }, 90000); // 1.5 minutes for single-step generation
+    }, 90000); // 1.5 minutes
   };
 
+  // Handle credit refund
+  const handleRefundCredit = async (predictionId: string) => {
+    try {
+      console.log(`💰 Refunding credit for prediction: ${predictionId}`);
+      const updatedUser = await userService.refundCredits(predictionId);
+      setUserCredits(updatedUser.credits);
+      console.log(`✅ Credit refunded. New balance: ${updatedUser.credits}`);
+    } catch (error) {
+      console.error("Failed to refund credit:", error);
+      // Don't show error to user for refund failures
+    }
+  };
+
+  // Main generation handler
   const handleGenerate = async () => {
     if (!uploadedImage || selectedLabubu === null) return;
 
+    // Check if user has credits
+    const { canGenerate, credits } = await userService.canGenerate();
+
+    if (!canGenerate) {
+      console.log("❌ Insufficient credits");
+      setShowInsufficientCreditsModal(true);
+      return;
+    }
+
+    console.log(`✅ User has ${credits} credits, proceeding with generation`);
+
+    setIsGenerating(true);
+    setGenerationProgress(0);
+    setEstimatedTime(45);
+    setGenerationStatus("Initializing...");
+    setError(null);
+    setGeneratedImage(null);
+    setGeneratedBlob(null);
+
     try {
-      setError(null);
-      setIsGenerating(true);
-      setGenerationProgress(0);
-      setEstimatedTime(0);
-      setGenerationStatus("🎬 Starting your Labubu transformation...");
-
-      console.log(`🎬 Starting generation for Labubu ${selectedLabubu}`);
-
-      // Check if this is a test photo
+      // Test photo simulation
       if (isTestPhoto) {
-        // For test photos, use pre-generated images
-        console.log(
-          `🎭 Using pre-generated test photo for Labubu ${selectedLabubu}`
-        );
+        const testPhotoNumber = uploadedImage.match(/original(\d+)/)?.[1];
+        console.log(`🧪 Test mode: Using test photo ${testPhotoNumber}`);
 
-        // Determine which test photo is being used
-        let testPhotoNumber = 1;
-        if (uploadedImage.includes("original2")) testPhotoNumber = 2;
-        else if (uploadedImage.includes("original3")) testPhotoNumber = 3;
-        else if (uploadedImage.includes("original4")) testPhotoNumber = 4;
-
-        // Simulate loading progress for test photos
-        const progressInterval = setInterval(() => {
-          setGenerationProgress((prev) => {
-            if (prev >= 100) {
-              clearInterval(progressInterval);
-              return 100;
-            }
-            return prev + 2; // Increment by 2% every 100ms
-          });
-        }, 100);
-
-        // Update status messages
-        const statusMessages = [
-          "🎨 AI is analyzing your test photo...",
+        const messages = [
+          "🎨 AI is analyzing your photo...",
           "✨ Blending you with your Labubu...",
           "🎭 Adding the finishing touches...",
           "🌟 Almost ready to reveal your photo...",
         ];
-
         let messageIndex = 0;
+
+        const progressInterval = setInterval(() => {
+          setGenerationProgress((prev) => Math.min(prev + 20, 100));
+        }, 1000);
+
         const messageInterval = setInterval(() => {
-          if (messageIndex < statusMessages.length) {
-            setGenerationStatus(statusMessages[messageIndex]);
+          if (messageIndex < messages.length) {
+            setGenerationStatus(messages[messageIndex]);
             messageIndex++;
           }
         }, 1250);
 
-        // Simulate 5-second loading
         setTimeout(() => {
           clearInterval(progressInterval);
           clearInterval(messageInterval);
           setGenerationProgress(100);
           setGenerationStatus("✅ Test generation complete!");
 
-          // Small delay to show completion
           setTimeout(() => {
             const generatedImageUrl = `/test-photos/generated${testPhotoNumber}_labubu${selectedLabubu}.svg`;
             setGeneratedImage(generatedImageUrl);
 
-            // Create a mock blob for download functionality
             fetch(generatedImageUrl)
               .then((response) => response.blob())
               .then((blob) => setGeneratedBlob(blob))
@@ -337,18 +383,16 @@ export default function LabubufyApp() {
         return;
       }
 
-      // For real photos, use the API
+      // Real photo generation
       if (!uploadedFile) {
         throw new Error("No file uploaded for generation");
       }
 
-      // Convert file to base64 for API
+      // Convert file to base64
       const imageBase64 = await imageUtils.fileToBase64(uploadedFile);
-      console.log(
-        `📷 Image converted to base64 (length: ${imageBase64.length})`
-      );
+      console.log(`📷 Image converted to base64`);
 
-      // Start generation
+      // Start generation and spend credit
       const response = await fetch("/api/generate", {
         method: "POST",
         headers: {
@@ -373,13 +417,26 @@ export default function LabubufyApp() {
         throw new Error(result.error || "Generation failed");
       }
 
-      console.log(`✅ Generation started successfully:`, result);
-      setCurrentPredictionId(result.prediction_id);
+      console.log(`✅ Generation started:`, result);
+      const predictionId = result.prediction_id;
+      setCurrentPredictionId(predictionId);
+
+      // NOW spend the credit AFTER successful generation start
+      try {
+        console.log(`💰 Spending 1 credit for prediction: ${predictionId}`);
+        const updatedUser = await userService.spendCredits(predictionId);
+        setUserCredits(updatedUser.credits);
+        console.log(`✅ Credit spent. New balance: ${updatedUser.credits}`);
+      } catch (spendError) {
+        console.error("Failed to spend credit:", spendError);
+        // If credit spending fails, we should still continue with generation
+        // The webhook will handle it or user can contact support
+      }
 
       // Start polling for status
-      startPolling(result.prediction_id);
+      startPolling(predictionId);
     } catch (err) {
-      console.error("❌ Generation start error:", err);
+      console.error("❌ Generation error:", err);
       const appError = errorHandler.parseError(err);
       setError(errorHandler.getUserMessage(appError));
       setIsGenerating(false);
@@ -394,6 +451,8 @@ export default function LabubufyApp() {
   const handleCancelGeneration = () => {
     console.log(`🛑 User cancelled generation`);
     if (currentPredictionId) {
+      // Refund the credit when user cancels
+      handleRefundCredit(currentPredictionId).catch(console.error);
       stopPolling(currentPredictionId);
     }
     setIsGenerating(false);
@@ -405,8 +464,6 @@ export default function LabubufyApp() {
 
   const handleDownload = () => {
     if (!generatedBlob || selectedLabubu === null) return;
-
-    console.log(`📥 Downloading image...`);
     const filename = formatUtils.generateFilename(selectedLabubu);
     urlUtils.downloadBlob(generatedBlob, filename);
   };
@@ -415,7 +472,6 @@ export default function LabubufyApp() {
     if (!generatedBlob || selectedLabubu === null) return;
 
     try {
-      console.log(`🔗 Sharing image...`);
       const filename = sharingService.generateShareFilename(selectedLabubu);
       const result = await sharingService.shareImage(generatedBlob, filename, {
         title: "My Labubu Photo",
@@ -427,35 +483,87 @@ export default function LabubufyApp() {
       }
     } catch (error) {
       console.error("Share error:", error);
-      // Fallback to download
       handleDownload();
     }
   };
 
   return (
     <div className="min-h-screen flex flex-col font-sans">
-      {/* Header */}
+      {/* Save Account Banner - shows for anonymous users with credits */}
+      <SaveAccountBanner onSaveClick={() => setShowSaveAccountModal(true)} />
 
+      {/* Header */}
       <header className="px-4 py-3 max-w-6xl mx-auto w-full flex justify-between items-center">
+        {/* Left side - Menu */}
         <div className="w-1/4">
-          <div className="w-full flex justify-start">
-            <Link href="/" className="bg-pink-400 rounded-full px-6 py-2">
+          <div className="w-full flex justify-start gap-2">
+            {/* Desktop Menu Button */}
+            <Link
+              href="/"
+              className="bg-pink-400 rounded-full px-6 py-2 hidden sm:block"
+            >
               <h1 className="text-sm sm:text-2xl font-bold text-white">Menu</h1>
             </Link>
+
+            {/* Mobile Menu */}
+            <MobileMenu
+              onSaveAccount={() => setShowSaveAccountModal(true)}
+              onSignIn={() => setShowSignInModal(true)}
+              onShowHistory={() => setShowHistory(true)}
+              onShowHelp={() => setShowHelpModal(true)}
+              onBuyCredits={() => setShowInsufficientCreditsModal(true)}
+              userCredits={userCredits}
+            />
+
+            {/* Help Button (Desktop) */}
+            {/* <button
+              onClick={() => setShowHelpModal(true)}
+              className="hidden sm:flex bg-gray-200 hover:bg-gray-300 rounded-full px-4 py-2 transition-colors items-center gap-2"
+              title="Help"
+            >
+              <HelpCircle className="w-4 h-4 sm:w-5 sm:h-5 text-gray-700" />
+              <span className="hidden md:inline text-sm text-gray-700">
+                Help
+              </span>
+            </button> */}
           </div>
         </div>
+
+        {/* Center - Logo */}
         <div className="bg-violet-600 rounded-full px-6 py-2 sm:hover:scale-105 sm:hover:-rotate-2 transition-all duration-300">
-          <Link href="/" className="">
+          <Link href="/">
             <h1 className="text-2xl sm:text-4xl font-bold text-white font-zubilo-black">
               Labubufy!
             </h1>
           </Link>
         </div>
+
+        {/* Right side - Credits & Account */}
         <div className="w-1/4">
-          <div className="w-full flex justify-end">
-            <Link href="/" className="bg-yellow-500 rounded-full px-6 py-2">
-              <h1 className="text-sm sm:text-2xl font-bold text-white">500</h1>
-            </Link>
+          <div className="w-full flex justify-end items-center gap-2">
+            {/* Save Account button - only for anonymous users with credits (Desktop) */}
+            {/* {isAnonymous && userCredits > 0 && (
+              <Button
+                onClick={() => setShowSaveAccountModal(true)}
+                size="sm"
+                className="hidden sm:flex bg-green-600 hover:bg-green-700 text-white"
+              >
+                <Shield className="w-4 h-4 mr-1" />
+                Save
+              </Button>
+            )} */}
+
+            {/* User Credits Component */}
+            <CreditsDisplay onCreditsUpdate={handleCreditsUpdate} />
+
+            {/* Account Menu (Desktop) */}
+            <div className="hidden sm:block">
+              <AccountMenu
+                onSaveAccount={() => setShowSaveAccountModal(true)}
+                onSignIn={() => setShowSignInModal(true)}
+                onShowHistory={() => setShowHistory(true)}
+              />
+            </div>
           </div>
         </div>
       </header>
@@ -477,14 +585,40 @@ export default function LabubufyApp() {
         </div>
       )}
 
+      {/* Success message after purchase */}
+      {justPurchased && (
+        <div className="bg-green-50 border-l-4 border-green-400 p-4 mx-4 mt-4">
+          <div className="flex">
+            <div className="ml-3">
+              <p className="text-sm text-green-700">
+                ✅ Payment successful! Your credits have been added.
+              </p>
+              <button
+                onClick={() => setJustPurchased(false)}
+                className="mt-2 text-sm text-green-600 underline hover:text-green-500"
+              >
+                Dismiss
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Insufficient Credits Modal */}
+      {showInsufficientCreditsModal && (
+        <InsufficientCreditsModal
+          onClose={() => setShowInsufficientCreditsModal(false)}
+          onShowHelp={() => setShowHelpModal(true)}
+        />
+      )}
+
       {/* Main Content */}
-      <div className="flex-1 p-2 sm:p-4 ">
+      <div className="flex-1 p-2 sm:p-4">
         <div className="border-3 border-zinc-900 max-w-6xl w-full mx-auto bg-zinc-50 rounded-3xl overflow-hidden min-h-[calc(100vh-8rem)] sm:h-[80vh] shadow-2xl">
-          <div className="flex flex-col-reverse sm:flex-row h-full ">
+          <div className="flex flex-col-reverse sm:flex-row h-full">
             {/* Left Panel - Labubu Selection */}
             <div className="w-full sm:w-1/2 p-3 sm:p-6 bg-zinc-50 flex flex-col overflow-y-auto">
               <div className="w-full h-fit max-w-sm mx-auto flex-1 flex flex-col justify-center py-2">
-                {/* Labubu Selection Grid */}
                 <LabubuSelection
                   selectedLabubu={selectedLabubu}
                   onSelect={setSelectedLabubu}
@@ -502,13 +636,30 @@ export default function LabubufyApp() {
                   >
                     {isGenerating ? "Labubufying..." : "Labubufy!"}
                   </Button>
+
+                  {/* Credit cost indicator */}
+                  {!isGenerating &&
+                    uploadedImage &&
+                    selectedLabubu !== null && (
+                      <div className="text-center mt-2 text-sm text-gray-600">
+                        <span className="font-medium">Cost: 1 credit</span>
+                        {userCredits > 0 ? (
+                          <span className="ml-2 text-green-600">
+                            • {userCredits} credits available
+                          </span>
+                        ) : (
+                          <span className="ml-2 text-red-600">
+                            • No credits available
+                          </span>
+                        )}
+                      </div>
+                    )}
                 </div>
               </div>
             </div>
 
             {/* Right Panel - Upload/Result */}
             <div className="w-full sm:w-1/2 bg-zinc-200 flex flex-col p-3 sm:p-6 overflow-y-auto">
-              {/* Main content area */}
               <div className="flex-1 flex items-center justify-center sm:min-h-[300px]">
                 {isGenerating ? (
                   <GenerationProgress
@@ -533,64 +684,32 @@ export default function LabubufyApp() {
                       onImageUpload={handleImageUpload}
                       onError={handleUploadError}
                     />
-                    <div className="mt-6">
-                      <TestPhotos onTestPhotoSelect={handleTestPhotoSelect} />
-                    </div>
                   </div>
                 )}
               </div>
 
-              {/* Bottom action buttons - only show when image is generated */}
-              {generatedImage && (
-                <div className="flex-shrink-0 mt-4 space-y-3 pb-2 font-sans">
-                  <div className="flex gap-2 sm:gap-3">
-                    <Button
-                      variant="outline"
-                      className="flex-1 border-violet-600 text-violet-600 hover:bg-violet-600 hover:text-white py-2 sm:py-3 bg-white text-xs sm:text-sm"
-                      onClick={handleDownload}
-                    >
-                      <Download className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-                      Download
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className="flex-1 border-violet-600 text-violet-600 hover:bg-violet-600 hover:text-white py-2 sm:py-3 bg-white text-xs sm:text-sm"
-                      onClick={handleShare}
-                    >
-                      <Share2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-                      Share
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className="flex-1 border-purple-dark text-purple-dark hover:bg-purple-dark hover:text-white py-2 sm:py-3 bg-white text-xs sm:text-sm"
-                      onClick={() => {
-                        setGeneratedImage(null);
-                        setGeneratedBlob(null);
-                        setUploadedImage(null);
-                        setUploadedFile(null);
-                        setSelectedLabubu(null);
-                        setIsTestPhoto(false);
-                        setError(null);
-                      }}
-                    >
-                      <RefreshCcw className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-                      Reset
-                    </Button>
-                  </div>
-                  {/* <Button
-                    variant="outline"
-                    className="w-full border-black text-black hover:bg-black hover:text-white py-2 sm:py-3 bg-white text-xs sm:text-sm"
-                    onClick={() => {
-                      setGeneratedImage(null);
-                      setGeneratedBlob(null);
-                      setUploadedImage(null);
-                      setUploadedFile(null);
-                      setSelectedLabubu(null);
-                      setError(null);
-                    }}
+              {/* Action Buttons */}
+              {generatedImage && !isGenerating && (
+                <div className="flex gap-2 mt-4">
+                  <Button
+                    onClick={handleDownload}
+                    className="flex-1 bg-green-600 hover:bg-green-700 text-white"
                   >
-                    Reset
-                  </Button> */}
+                    Download
+                  </Button>
+                  <Button
+                    onClick={handleShare}
+                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                  >
+                    Share
+                  </Button>
+                </div>
+              )}
+
+              {/* Test Photos */}
+              {!uploadedImage && !isGenerating && (
+                <div className="mt-4">
+                  <TestPhotos onTestPhotoSelect={handleTestPhotoSelect} />
                 </div>
               )}
             </div>
@@ -598,14 +717,87 @@ export default function LabubufyApp() {
         </div>
       </div>
 
-      {/* Footer */}
-      <footer className="w-full bg-violet-600 sm:h-48">
-        <div className="max-w-6xl mx-auto w-full flex justify-between items-center py-12">
-          <h1 className="text-sm sm:text-2xl font-bold text-white">Footer</h1>
-          <h1 className="text-sm sm:text-2xl font-bold text-white">Footer</h1>
-          <h1 className="text-sm sm:text-2xl font-bold text-white">Footer</h1>
+      {/* History Gallery */}
+      {showHistory && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-auto">
+            <HistoryGallery
+              onClose={() => setShowHistory(false)}
+              isOpen={showHistory}
+            />
+          </div>
         </div>
-      </footer>
+      )}
+
+      {/* Help Modal */}
+      <HelpModal
+        isOpen={showHelpModal}
+        onClose={() => setShowHelpModal(false)}
+      />
+
+      {/* Save Account Modal */}
+      <SaveAccountModal
+        isOpen={showSaveAccountModal}
+        onClose={() => setShowSaveAccountModal(false)}
+        onSuccess={handleAccountSaved}
+      />
+
+      {/* Sign In Modal */}
+      <SignInModal
+        isOpen={showSignInModal}
+        onClose={() => setShowSignInModal(false)}
+        onSuccess={handleSignInSuccess}
+      />
+    </div>
+  );
+}
+
+// Insufficient Credits Modal Component
+interface InsufficientCreditsModalProps {
+  onClose: () => void;
+  onShowHelp: () => void;
+}
+
+function InsufficientCreditsModal({
+  onClose,
+  onShowHelp,
+}: InsufficientCreditsModalProps) {
+  return (
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-xl max-w-md w-full p-6">
+        <div className="text-center">
+          <div className="text-6xl mb-4">😢</div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">
+            Oops! No Credits Left
+          </h2>
+          <p className="text-gray-600 mb-6">
+            You need at least 1 credit to generate an image. Purchase more
+            credits to continue creating amazing photos!
+          </p>
+
+          <div className="space-y-3">
+            <Button
+              onClick={onClose}
+              className="w-full bg-violet-600 hover:bg-violet-700 text-white py-3"
+            >
+              Buy Credits Now
+            </Button>
+            <Button onClick={onClose} variant="outline" className="w-full">
+              Maybe Later
+            </Button>
+          </div>
+
+          <button
+            onClick={() => {
+              onClose();
+              onShowHelp();
+            }}
+            className="text-sm text-gray-500 hover:text-gray-700 mt-4"
+          >
+            Learn more about credits →
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

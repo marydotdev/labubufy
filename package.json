@@ -9,12 +9,19 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.922.0",
+    "@aws-sdk/s3-request-presigner": "^3.922.0",
+    "@supabase/supabase-js": "^2.78.0",
     "clsx": "^2.1.1",
     "lucide-react": "^0.540.0",
     "next": "15.5.0",
     "react": "19.1.0",
     "react-dom": "19.1.0",
-    "tailwind-merge": "^3.3.1"
+    "react-icons": "^5.5.0",
+    "stripe": "^19.2.0",
+    "tailwind-merge": "^3.3.1",
+    "zod": "^4.1.12",
+    "zustand": "^5.0.8"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",

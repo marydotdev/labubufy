@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import localFont from "next/font/local";
+import "@/lib/monitoring";
 
 const zubiloBlack = localFont({
   src: "../public/fonts/ZubiloBlack.woff2",
