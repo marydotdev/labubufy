@@ -131,9 +131,15 @@ export default function LabubufyApp() {
   }, [currentPredictionId, stopPolling]);
 
   // Check for successful payment and show save account modal
+  // Use ref to prevent multiple executions
+  const hasProcessedPaymentRef = React.useRef(false);
   React.useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get("payment") === "success") {
+    if (
+      urlParams.get("payment") === "success" &&
+      !hasProcessedPaymentRef.current
+    ) {
+      hasProcessedPaymentRef.current = true;
       setJustPurchased(true);
       // Refresh credits after payment
       refreshCredits().catch(console.error);
@@ -144,7 +150,7 @@ export default function LabubufyApp() {
         }, 1000);
       }
     }
-  }, [isAnonymous, refreshCredits]);
+  }, [isAnonymous]); // Removed refreshCredits from dependencies to prevent infinite loop
 
   const handleImageUpload = (file: File, previewUrl: string) => {
     setUploadedFile(file);
@@ -299,11 +305,12 @@ export default function LabubufyApp() {
           }
 
           // Don't show error for network issues - just log and continue polling
-          if (err instanceof Error && (
-            err.message.includes("network") ||
-            err.message.includes("fetch") ||
-            err.message.includes("Failed to fetch")
-          )) {
+          if (
+            err instanceof Error &&
+            (err.message.includes("network") ||
+              err.message.includes("fetch") ||
+              err.message.includes("Failed to fetch"))
+          ) {
             console.warn("Network error during status check, will retry...");
             return; // Continue polling
           }
@@ -333,7 +340,9 @@ export default function LabubufyApp() {
           // Refund credit on timeout
           handleRefundCredit(predictionId).catch(console.error);
 
-          setError("Generation is taking longer than expected. Your credit has been refunded - please try again.");
+          setError(
+            "Generation is taking longer than expected. Your credit has been refunded - please try again."
+          );
           setIsGenerating(false);
           setGenerationProgress(0);
           setEstimatedTime(0);
@@ -373,6 +382,34 @@ export default function LabubufyApp() {
       if (isTestPhoto) {
         const testPhotoNumber = uploadedImage.match(/original(\d+)/)?.[1];
         console.log(`🧪 Test mode: Using test photo ${testPhotoNumber}`);
+
+        // Generate a unique prediction ID for test photos
+        const testPredictionId = `test_${Date.now()}_${Math.random()
+          .toString(36)
+          .substring(7)}`;
+
+        // Spend credit for test photo generation
+        try {
+          console.log(
+            `💰 Spending 1 credit for test photo: ${testPredictionId}`
+          );
+          const success = await spendCredit(testPredictionId);
+          if (!success) {
+            console.error("Failed to spend credit for test photo");
+            setError("Failed to spend credit. Please try again.");
+            setIsGenerating(false);
+            return;
+          } else {
+            console.log(
+              `✅ Credit spent for test photo. New balance: ${userCredits}`
+            );
+          }
+        } catch (spendError) {
+          console.error("Failed to spend credit for test photo:", spendError);
+          setError("Failed to spend credit. Please try again.");
+          setIsGenerating(false);
+          return;
+        }
 
         const messages = [
           "🎨 AI is analyzing your photo...",
