@@ -37,7 +37,7 @@ export function getClientIP(
 
   // Fallback: try to get IP from request object if available
   // This handles cases where headers aren't set (like in development)
-  if ("ip" in request && request.ip) {
+  if ("ip" in request && request.ip && typeof request.ip === "string") {
     return request.ip;
   }
 

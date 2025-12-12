@@ -150,7 +150,8 @@ export default function LabubufyApp() {
         }, 1000);
       }
     }
-  }, [isAnonymous]); // Removed refreshCredits from dependencies to prevent infinite loop
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAnonymous]); // refreshCredits intentionally excluded to prevent infinite loop
 
   const handleImageUpload = (file: File, previewUrl: string) => {
     setUploadedFile(file);

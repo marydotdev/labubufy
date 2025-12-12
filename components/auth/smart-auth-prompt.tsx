@@ -1,12 +1,12 @@
 // components/auth/smart-auth-prompt.tsx
 // Smart auth prompt that shows strategically to encourage account saving
-'use client';
+"use client";
 
-import { useUserStore } from '@/lib/stores/user-store';
-import { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { authService } from '@/lib/auth';
-import { X } from 'lucide-react';
+import { useUserStore } from "@/lib/stores/user-store";
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { authService } from "@/lib/auth";
+import { X } from "lucide-react";
 
 export function SmartAuthPrompt() {
   const { user, credits } = useUserStore();
@@ -15,7 +15,7 @@ export function SmartAuthPrompt() {
 
   useEffect(() => {
     // Retrieve dismissed timestamp from sessionStorage
-    const stored = sessionStorage.getItem('auth-prompt-dismissed');
+    const stored = sessionStorage.getItem("auth-prompt-dismissed");
     if (stored) {
       setDismissedAt(parseInt(stored, 10));
     }
@@ -27,29 +27,29 @@ export function SmartAuthPrompt() {
       credits < 3 && // After they've used at least one credit
       (!dismissedAt || Date.now() - dismissedAt > 3600000); // 1 hour cooldown
 
-    setShouldShow(shouldPrompt);
+    setShouldShow(shouldPrompt ?? false);
   }, [user, credits, dismissedAt]);
 
   const handleDismiss = () => {
     const now = Date.now();
     setDismissedAt(now);
     setShouldShow(false);
-    sessionStorage.setItem('auth-prompt-dismissed', now.toString());
+    sessionStorage.setItem("auth-prompt-dismissed", now.toString());
   };
 
   const handleGoogleSignIn = async () => {
     try {
-      await authService.signInWithProvider('google');
+      await authService.signInWithProvider("google");
     } catch (error) {
-      console.error('Failed to sign in with Google:', error);
+      console.error("Failed to sign in with Google:", error);
     }
   };
 
   const handleAppleSignIn = async () => {
     try {
-      await authService.signInWithProvider('apple');
+      await authService.signInWithProvider("apple");
     } catch (error) {
-      console.error('Failed to sign in with Apple:', error);
+      console.error("Failed to sign in with Apple:", error);
     }
   };
 
@@ -66,7 +66,7 @@ export function SmartAuthPrompt() {
       </button>
 
       <h3 className="text-lg font-bold mb-2 pr-6">
-        Don&apos;t lose your {credits} credit{credits !== 1 ? 's' : ''}! 💎
+        Don&apos;t lose your {credits} credit{credits !== 1 ? "s" : ""}! 💎
       </h3>
 
       <p className="text-sm text-gray-600 mb-4">
@@ -113,4 +113,3 @@ export function SmartAuthPrompt() {
     </div>
   );
 }
-

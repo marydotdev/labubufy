@@ -3,13 +3,13 @@
 // The new payment flow uses session verification instead of webhooks
 // Updated to use new schema: users table and add_credits function
 import { NextRequest, NextResponse } from "next/server";
-import Stripe from 'stripe';
+import Stripe from "stripe";
 
 import { supabaseAdmin } from "@/lib/supabase";
 
 const stripe = process.env.STRIPE_SECRET_KEY
   ? new Stripe(process.env.STRIPE_SECRET_KEY, {
-      apiVersion: '2025-08-27.basil',
+      apiVersion: "2025-10-29.clover",
     })
   : null;
 
@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
     // Verify webhook signature
     if (!stripe) {
       return NextResponse.json(
-        { error: 'Stripe is not configured' },
+        { error: "Stripe is not configured" },
         { status: 500 }
       );
     }
@@ -41,9 +41,9 @@ export async function POST(request: NextRequest) {
         process.env.STRIPE_WEBHOOK_SECRET!
       );
     } catch (err) {
-      console.error('Webhook signature verification failed:', err);
+      console.error("Webhook signature verification failed:", err);
       return NextResponse.json(
-        { error: 'Webhook verification failed' },
+        { error: "Webhook verification failed" },
         { status: 400 }
       );
     }
@@ -79,21 +79,24 @@ export async function POST(request: NextRequest) {
             }
 
             const creditsToAdd = parseInt(credits);
-            console.log(`💰 Adding ${creditsToAdd} credits to user ${userId}...`);
+            console.log(
+              `💰 Adding ${creditsToAdd} credits to user ${userId}...`
+            );
 
             // Use the add_credits function with auth_user_id
-            const { data: updatedUser, error: updateError } = await supabaseAdmin!.rpc('add_credits', {
-              auth_id: user.auth_user_id,
-              amount: creditsToAdd,
-              transaction_type: 'purchase',
-              description: `Purchased ${creditsToAdd} credits`,
-              metadata: {
-                package_id: packageId,
-                stripe_session_id: session.id,
-                amount_paid: session.amount_total,
-                currency: session.currency,
-              }
-            });
+            const { data: updatedUser, error: updateError } =
+              await supabaseAdmin!.rpc("add_credits", {
+                auth_id: user.auth_user_id,
+                amount: creditsToAdd,
+                transaction_type: "purchase",
+                description: `Purchased ${creditsToAdd} credits`,
+                metadata: {
+                  package_id: packageId,
+                  stripe_session_id: session.id,
+                  amount_paid: session.amount_total,
+                  currency: session.currency,
+                },
+              });
 
             if (updateError) {
               console.error("❌ Error adding credits:", updateError);

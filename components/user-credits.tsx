@@ -17,14 +17,15 @@ type CreditPackage = {
 };
 
 // Map PRICING.credits to match the old CreditPackage interface
-const CREDIT_PACKAGES: (CreditPackage & { name: string; credits: number })[] = PRICING.credits.map(pkg => ({
-  id: pkg.id,
-  amount: pkg.amount,
-  credits: pkg.amount, // Map amount to credits for compatibility
-  name: `${pkg.amount} Credits`, // Generate name from amount
-  price: pkg.price,
-  popular: pkg.popular,
-}));
+const CREDIT_PACKAGES: (CreditPackage & { name: string; credits: number })[] =
+  PRICING.credits.map((pkg) => ({
+    id: pkg.id,
+    amount: pkg.amount,
+    credits: pkg.amount, // Map amount to credits for compatibility
+    name: `${pkg.amount} Credits`, // Generate name from amount
+    price: pkg.price,
+    popular: pkg.popular,
+  }));
 import { cn } from "@/lib/utils";
 
 // Type for credit events from the new schema
@@ -34,7 +35,7 @@ interface CreditEvent {
   type: "welcome" | "purchase" | "spend" | "refund";
   amount: number;
   description: string | null;
-  metadata: Record<string, any> | null;
+  metadata: Record<string, unknown> | null;
   created_at: string;
 }
 
@@ -47,7 +48,8 @@ export function CreditsDisplay({
   onCreditsUpdate,
   className,
 }: CreditsDisplayProps) {
-  const { user, credits, isInitialized, isLoading, initialize } = useUserStore();
+  const { user, credits, isInitialized, isLoading, initialize } =
+    useUserStore();
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
 
@@ -81,9 +83,7 @@ export function CreditsDisplay({
           onClick={() => setShowPurchaseModal(true)}
         >
           <Coins className="w-5 h-5 text-white" />
-          <span className="text-white font-bold text-lg">
-            {credits || 0}
-          </span>
+          <span className="text-white font-bold text-lg">{credits || 0}</span>
         </div>
 
         {/* <Button

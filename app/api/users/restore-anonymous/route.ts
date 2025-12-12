@@ -2,7 +2,6 @@
 // Restore anonymous user credits based on stored auth_id or browser fingerprint
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
-import { getClientIP } from "@/lib/utils/ip-fingerprint";
 
 export async function POST(request: NextRequest) {
   try {
@@ -42,7 +41,6 @@ export async function POST(request: NextRequest) {
     const body = await request.json().catch(() => ({}));
     const storedAnonymousAuthId = body.storedAnonymousAuthId || null;
     const browserFingerprint = body.browserFingerprint || null;
-    const clientIP = getClientIP(request);
 
     // Try to find the previous anonymous user
     let previousUser = null;
@@ -64,7 +62,11 @@ export async function POST(request: NextRequest) {
 
       if (!rpcError && rpcData) {
         // RPC returns user data directly
-        const userData = rpcData as any;
+        interface UserRpcData {
+          id: string;
+          credits?: number;
+        }
+        const userData = rpcData as UserRpcData;
         const userId = userData.id;
 
         // Get credits for this user
@@ -84,7 +86,7 @@ export async function POST(request: NextRequest) {
         }
       } else {
         // Fallback: try direct query with both column names
-        let { data, error } = await supabaseAdmin
+        const { data, error } = await supabaseAdmin
           .from("users")
           .select("id, auth_id, auth_user_id, is_anonymous, credits")
           .or(
@@ -132,11 +134,14 @@ export async function POST(request: NextRequest) {
           browser_fingerprint: null,
         });
 
-      let currentUserRecord = null;
+      let currentUserRecord: { id: string } | null = null;
       let userError = currentUserRpcError;
 
       if (!currentUserRpcError && currentUserRpcData) {
-        const userData = currentUserRpcData as any;
+        interface UserRpcData {
+          id: string;
+        }
+        const userData = currentUserRpcData as UserRpcData;
         currentUserRecord = { id: userData.id };
       } else {
         // Fallback: try direct query
@@ -152,18 +157,6 @@ export async function POST(request: NextRequest) {
       }
 
       if (!userError && currentUserRecord) {
-        // Check which schema we're using (credits in users table or user_credits table)
-        const { data: schemaCheck } = await supabaseAdmin.rpc(
-          "ensure_user_exists",
-          {
-            auth_id: currentUser.id,
-            email: null,
-            is_anonymous: true,
-            ip_address: null,
-            browser_fingerprint: null,
-          }
-        );
-
         // Try to update credits in users table first (newer schema)
         const { error: updateUsersError } = await supabaseAdmin
           .from("users")

@@ -51,7 +51,7 @@ export class AuthService {
       );
 
       // If this is a new anonymous user and we have a stored anonymous auth_id, try to restore credits
-      
+
       if (session.user.is_anonymous && typeof window !== "undefined") {
         const storedAnonymousAuthId = localStorage.getItem(
           "labubufy_anonymous_auth_id"
@@ -60,7 +60,6 @@ export class AuthService {
           storedAnonymousAuthId &&
           storedAnonymousAuthId !== session.user.id
         ) {
-
           try {
             const token = await this.getAccessToken();
             if (token) {
@@ -101,6 +100,10 @@ export class AuthService {
 
     // 2. Create anonymous user with retry logic
     // Check if we have a stored anonymous user ID to restore
+    const storedAnonymousAuthId =
+      typeof window !== "undefined"
+        ? localStorage.getItem("labubufy_anonymous_auth_id")
+        : null;
 
     return this.createAnonymousUserWithRetry(
       3,
@@ -114,16 +117,13 @@ export class AuthService {
     browserFingerprint?: string | null,
     storedAnonymousAuthId?: string | null
   ): Promise<User> {
-
     for (let i = 0; i < attempts; i++) {
-      
       try {
         const { data, error } = await this.supabase.auth.signInAnonymously();
-        
+
         if (error) throw error;
 
         if (data?.user) {
-
           // Ensure user record exists first
           const user = await this.ensureUserRecord(
             data.user,
@@ -146,7 +146,6 @@ export class AuthService {
             storedAnonymousAuthId !== data.user.id &&
             typeof window !== "undefined"
           ) {
-            
             try {
               const token = await this.getAccessToken();
               if (token) {
@@ -166,8 +165,8 @@ export class AuthService {
                 );
 
                 if (restoreResponse.ok) {
-                  const restoreResult = JSON.parse(restoreResponseText);
-                  
+                  const restoreResult = await restoreResponse.json();
+
                   if (
                     restoreResult.restored &&
                     restoreResult.credits !== undefined
@@ -179,7 +178,7 @@ export class AuthService {
               }
             } catch (error) {
               console.error("Failed to restore anonymous user credits:", error);
-              
+
               // Continue with new user if restoration fails
             }
           }
@@ -191,7 +190,7 @@ export class AuthService {
           `Anonymous user creation attempt ${i + 1} failed:`,
           error
         );
-        
+
         if (i === attempts - 1) {
           throw new Error(
             "Failed to create anonymous user after multiple attempts"
@@ -203,7 +202,7 @@ export class AuthService {
         );
       }
     }
-    
+
     throw new Error("Failed to create anonymous user");
   }
 
@@ -211,13 +210,12 @@ export class AuthService {
     authUser: { id: string; email?: string | null; is_anonymous?: boolean },
     browserFingerprint?: string | null
   ): Promise<User> {
-    
     // For client-side calls, we can't get IP directly, so we'll call via API route
     // which can get the IP server-side
     if (typeof window !== "undefined") {
       // Client-side: call API route which can get IP
       const token = await this.getAccessToken();
-      
+
       if (!token) {
         throw new Error("No session token available");
       }
@@ -235,12 +233,12 @@ export class AuthService {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        
+
         throw new Error(errorData.error || "Failed to initialize user");
       }
 
       const result = await response.json();
-      
+
       return result.user;
     } else {
       // Server-side: call RPC directly (IP will be null, but that's okay for server-side)
@@ -258,10 +256,20 @@ export class AuthService {
       }
 
       // Parse the JSON response
-      const userData = data as any;
+      interface UserRpcData {
+        id: string;
+        auth_user_id?: string;
+        auth_id?: string;
+        email: string | null;
+        is_anonymous: boolean;
+        credits?: number;
+        total_purchased?: number;
+        total_spent?: number;
+      }
+      const userData = data as UserRpcData;
       return {
         id: userData.id,
-        auth_id: userData.auth_user_id || userData.auth_id, // Function returns auth_user_id
+        auth_id: userData.auth_user_id || userData.auth_id || "", // Function returns auth_user_id
         email: userData.email,
         is_anonymous: userData.is_anonymous,
         credits: userData.credits || 0,
@@ -442,10 +450,10 @@ export class AuthService {
 
       // Re-throw validation errors as-is
       if (error instanceof z.ZodError) {
-        if (error.errors.find((e) => e.path.includes("email"))) {
+        if (error.issues.find((e) => e.path.includes("email"))) {
           throw new Error("Please enter a valid email address");
         }
-        if (error.errors.find((e) => e.path.includes("password"))) {
+        if (error.issues.find((e) => e.path.includes("password"))) {
           throw new Error("Password must be at least 6 characters long");
         }
       }
