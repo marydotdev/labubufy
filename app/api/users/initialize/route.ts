@@ -1,7 +1,8 @@
 // app/api/users/initialize/route.ts
-// Updated to use new ensure_user_exists database function
+// Updated to use new ensure_user_exists database function with IP/fingerprint tracking
 import { NextRequest, NextResponse } from "next/server";
 import { supabase, supabaseAdmin } from "@/lib/supabase";
+import { getClientIP } from "@/lib/utils/ip-fingerprint";
 
 export async function POST(request: NextRequest) {
   try {
@@ -36,15 +37,28 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Use the new ensure_user_exists function
-    const { data, error } = await supabaseAdmin.rpc('ensure_user_exists', {
+    // Get client IP and browser fingerprint for abuse prevention
+    const clientIP = getClientIP(request);
+    const body = await request.json().catch(() => ({}));
+    const browserFingerprint = body.browserFingerprint || null;
+
+    // Use the new ensure_user_exists function with IP and fingerprint
+    const rpcParams = {
       auth_id: user.id,
       email: user.email || null,
-      is_anonymous: user.is_anonymous ?? true
-    });
+      is_anonymous: user.is_anonymous ?? true,
+      ip_address: clientIP || null,
+      browser_fingerprint: browserFingerprint || null,
+    };
+
+    const { data, error } = await supabaseAdmin.rpc(
+      "ensure_user_exists",
+      rpcParams
+    );
 
     if (error) {
       console.error("❌ Failed to ensure user exists:", error);
+
       return NextResponse.json(
         { error: `Failed to initialize user: ${error.message}` },
         { status: 500 }
@@ -52,7 +66,17 @@ export async function POST(request: NextRequest) {
     }
 
     // The function returns a JSON object with user data
-    const userData = data as any;
+    interface EnsureUserExistsResponse {
+      id: string;
+      auth_user_id: string;
+      email: string | null;
+      is_anonymous: boolean;
+      credits: number;
+      total_purchased?: number;
+      total_spent?: number;
+    }
+
+    const userData = data as EnsureUserExistsResponse;
 
     console.log("✅ User initialized successfully:", userData);
 
@@ -65,7 +89,7 @@ export async function POST(request: NextRequest) {
         is_anonymous: userData.is_anonymous,
         credits: userData.credits || 0,
         total_purchased: userData.total_purchased || 0,
-        total_spent: userData.total_spent || 0
+        total_spent: userData.total_spent || 0,
       },
     });
   } catch (error) {

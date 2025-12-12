@@ -27,7 +27,7 @@ export const CONFIG = {
 
 // Nano Banana AI configuration
 export const AI_CONFIG = {
-  MODEL: "google/nano-banana",
+  MODEL: "google/nano-banana-pro",
   // Alternative preview version: "google/gemini-2-5-flash-image-preview"
   PROMPT_TEMPLATE:
     "Create a photo of the person holding this Labubu doll. Make it look natural and realistic, maintaining the person's appearance exactly as shown. The height of the doll is 14.5 inches and the width is 7.8 inches.",

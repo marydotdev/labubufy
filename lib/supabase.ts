@@ -9,8 +9,16 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error("Missing required Supabase environment variables");
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// Create a single shared Supabase client instance
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+  },
+});
 
+// Admin client - only create if service key is available
 export const supabaseAdmin = supabaseServiceKey
   ? createClient(supabaseUrl, supabaseServiceKey, {
       auth: {
@@ -28,10 +36,13 @@ export const supabaseAdmin = supabaseServiceKey
     })
   : null;
 
-// Log for debugging (remove in production)
-if (supabaseAdmin) {
-  console.log("✅ Supabase Admin client initialized with service role");
-} else {
+// Only log warning in development and on server-side (not client-side)
+// Service role key should never be available on client, so this is expected
+if (
+  process.env.NODE_ENV === "development" &&
+  !supabaseAdmin &&
+  typeof window === "undefined"
+) {
   console.warn(
     "⚠️ Supabase Admin client not available - missing service role key"
   );

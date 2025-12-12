@@ -4,7 +4,7 @@
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { X, Mail, Lock } from "lucide-react";
-import { userService } from "@/lib/user-service";
+import { useUserStore } from "@/lib/stores/user-store";
 
 interface SignInModalProps {
   isOpen: boolean;
@@ -13,8 +13,10 @@ interface SignInModalProps {
 }
 
 export function SignInModal({ isOpen, onClose, onSuccess }: SignInModalProps) {
+  const { signInWithEmail, signUpWithEmail } = useUserStore();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [isSignUp, setIsSignUp] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -27,14 +29,52 @@ export function SignInModal({ isOpen, onClose, onSuccess }: SignInModalProps) {
       return;
     }
 
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters long");
+      return;
+    }
+
     try {
       setLoading(true);
-      await userService.signInWithEmail(email, password);
-      onSuccess();
-      onClose();
+      setError(null);
+
+      console.log(`🔐 Attempting to ${isSignUp ? 'sign up' : 'sign in'}...`);
+
+      if (isSignUp) {
+        try {
+          await signUpWithEmail(email, password);
+          console.log(`✅ Sign up successful!`);
+
+          // Small delay to ensure state is updated
+          await new Promise(resolve => setTimeout(resolve, 100));
+
+          onSuccess();
+          onClose();
+        } catch (err) {
+          // Handle email confirmation requirement
+          if (err instanceof Error && err.message.includes('EMAIL_CONFIRMATION_REQUIRED')) {
+            setError('Account created! Please check your email to confirm your account, then sign in.');
+            // Don't close modal - let them try signing in after confirming
+            return;
+          }
+          throw err; // Re-throw other errors
+        }
+      } else {
+        await signInWithEmail(email, password);
+        console.log(`✅ Sign in successful!`);
+
+        // Small delay to ensure state is updated
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        onSuccess();
+        onClose();
+      }
     } catch (err) {
-      console.error("Failed to sign in:", err);
-      setError("Invalid email or password");
+      console.error(`❌ Failed to ${isSignUp ? 'sign up' : 'sign in'}:`, err);
+      const errorMessage = err instanceof Error
+        ? err.message
+        : `Failed to ${isSignUp ? 'sign up' : 'sign in'}. Please try again.`;
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -46,7 +86,9 @@ export function SignInModal({ isOpen, onClose, onSuccess }: SignInModalProps) {
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-xl max-w-md w-full p-6">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-bold text-gray-900">Sign In</h2>
+          <h2 className="text-xl font-bold text-gray-900">
+            {isSignUp ? "Sign Up" : "Sign In"}
+          </h2>
           <Button variant="outline" size="sm" onClick={onClose}>
             <X className="w-4 h-4" />
           </Button>
@@ -96,13 +138,30 @@ export function SignInModal({ isOpen, onClose, onSuccess }: SignInModalProps) {
             disabled={loading}
             className="w-full bg-violet-600 hover:bg-violet-700 text-white py-3"
           >
-            {loading ? "Signing in..." : "Sign In"}
+            {loading
+              ? isSignUp
+                ? "Creating account..."
+                : "Signing in..."
+              : isSignUp
+              ? "Sign Up"
+              : "Sign In"}
           </Button>
         </form>
 
-        <p className="text-xs text-gray-500 text-center mt-4">
-          Don&apos;t have an account? Use the app to create one!
-        </p>
+        <div className="mt-4 text-center">
+          <button
+            type="button"
+            onClick={() => {
+              setIsSignUp(!isSignUp);
+              setError(null);
+            }}
+            className="text-sm text-violet-600 hover:text-violet-700 underline"
+          >
+            {isSignUp
+              ? "Already have an account? Sign in"
+              : "Don't have an account? Sign up"}
+          </button>
+        </div>
       </div>
     </div>
   );

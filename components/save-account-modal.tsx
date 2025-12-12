@@ -4,8 +4,7 @@
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { X, Mail, Lock, CheckCircle, AlertTriangle } from "lucide-react";
-import { userService } from "@/lib/user-service";
-import { supabase } from "@/lib/supabase";
+import { useUserStore } from "@/lib/stores/user-store";
 
 interface SaveAccountModalProps {
   isOpen: boolean;
@@ -18,6 +17,7 @@ export function SaveAccountModal({
   onClose,
   onSuccess,
 }: SaveAccountModalProps) {
+  const { upgradeAccount } = useUserStore();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -51,63 +51,8 @@ export function SaveAccountModal({
       // Normalize email
       const normalizedEmail = email.toLowerCase().trim();
 
-      // IMPROVED: Use Supabase auth directly for better error handling
-      const { data: authData, error: authError } =
-        await supabase.auth.updateUser({
-          email: normalizedEmail,
-          password: password,
-        });
-
-      if (authError) {
-        console.error("Auth update error:", authError);
-
-        // Handle specific error cases
-        if (
-          authError.message.includes("already registered") ||
-          authError.message.includes("already been registered")
-        ) {
-          setError(
-            "This email is already in use. Please sign in with that email instead, or use a different email."
-          );
-          return;
-        } else if (authError.message.includes("Invalid")) {
-          setError("Please check your email format and try again.");
-          return;
-        } else {
-          setError(authError.message);
-          return;
-        }
-      }
-
-      if (!authData.user) {
-        setError("Failed to update account. Please try again.");
-        return;
-      }
-
-      console.log("Auth updated successfully:", authData.user.id);
-
-      // Now update the user_credits table
-      const { error: updateError } = await supabase
-        .from("user_credits")
-        .update({
-          email: normalizedEmail,
-          is_anonymous: false,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("auth_user_id", authData.user.id);
-
-      if (updateError) {
-        console.error("Failed to update user credits:", updateError);
-        // Don't fail the whole process for this
-      }
-
-      // Also sync with our user service
-      try {
-        await userService.linkEmail(normalizedEmail, password);
-      } catch (syncError) {
-        console.error("User service sync error:", syncError);
-        // Don't fail - the important part (Supabase auth) is done
-      }
+      // Use Zustand store's upgradeAccount method
+      await upgradeAccount(normalizedEmail, password);
 
       setSuccess(true);
 
@@ -116,18 +61,19 @@ export function SaveAccountModal({
         onClose();
       }, 2000);
     } catch (err) {
-      console.error("Failed to link email:", err);
+      console.error("Failed to upgrade account:", err);
 
       if (err instanceof Error) {
         if (
           err.message.includes("already registered") ||
-          err.message.includes("already in use")
+          err.message.includes("already in use") ||
+          err.message.includes("already been registered")
         ) {
           setError(
-            "This email is already registered. Would you like to sign in instead?"
+            "This email is already registered. Please sign in instead, or use a different email."
           );
         } else {
-          setError(err.message);
+          setError(err.message || "Failed to save account. Please try again.");
         }
       } else {
         setError("Failed to save account. Please try again.");

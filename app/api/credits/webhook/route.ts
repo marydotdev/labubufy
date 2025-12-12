@@ -1,6 +1,7 @@
-// app/api/credits/webhook/route.ts - Fixed version
+// app/api/credits/webhook/route.ts
 // Note: Webhook route kept for backward compatibility
 // The new payment flow uses session verification instead of webhooks
+// Updated to use new schema: users table and add_credits function
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from 'stripe';
 
@@ -60,94 +61,50 @@ export async function POST(request: NextRequest) {
           };
 
           try {
-            // Get current user credits - userId is user_credits.id
-            const { data: currentCredits, error: fetchError } =
-              await supabaseAdmin!
-                .from("user_credits")
-                .select("*")
-                .eq("id", userId)
-                .single();
+            // userId from metadata is users.id (primary key)
+            // But add_credits function expects auth_user_id
+            // So we need to get the auth_user_id from the users table
+            const { data: user, error: userError } = await supabaseAdmin!
+              .from("users")
+              .select("auth_user_id")
+              .eq("id", userId)
+              .single();
 
-            if (fetchError || !currentCredits) {
-              console.error("Error fetching user credits:", fetchError);
+            if (userError || !user) {
+              console.error("Error fetching user:", userError);
               return NextResponse.json(
                 { error: "User not found" },
                 { status: 404 }
               );
             }
 
-            console.log("📊 Current user credits:", currentCredits);
-
-            // Add credits to user account
             const creditsToAdd = parseInt(credits);
-            const newCreditsTotal = currentCredits.credits + creditsToAdd;
-            const newPurchasedTotal =
-              currentCredits.total_purchased + creditsToAdd;
+            console.log(`💰 Adding ${creditsToAdd} credits to user ${userId}...`);
 
-            console.log(`💰 Adding ${creditsToAdd} credits...`);
-            console.log(
-              `📈 New totals: credits=${newCreditsTotal}, purchased=${newPurchasedTotal}`
-            );
-
-            // Update with explicit values
-            const { error: updateError } = await supabaseAdmin!
-              .from("user_credits")
-              .update({
-                credits: newCreditsTotal,
-                total_purchased: newPurchasedTotal,
-                updated_at: new Date().toISOString(),
-              })
-              .eq("id", userId);
+            // Use the add_credits function with auth_user_id
+            const { data: updatedUser, error: updateError } = await supabaseAdmin!.rpc('add_credits', {
+              auth_id: user.auth_user_id,
+              amount: creditsToAdd,
+              transaction_type: 'purchase',
+              description: `Purchased ${creditsToAdd} credits`,
+              metadata: {
+                package_id: packageId,
+                stripe_session_id: session.id,
+                amount_paid: session.amount_total,
+                currency: session.currency,
+              }
+            });
 
             if (updateError) {
-              console.error("❌ Error updating user credits:", updateError);
+              console.error("❌ Error adding credits:", updateError);
               return NextResponse.json(
                 { error: "Failed to add credits" },
                 { status: 500 }
               );
             }
 
-            // Verify the update worked by fetching again
-            const { data: verifyCredits, error: verifyError } =
-              await supabaseAdmin!
-                .from("user_credits")
-                .select("credits, total_purchased")
-                .eq("id", userId)
-                .single();
-
-            if (verifyError) {
-              console.error("⚠️ Could not verify update:", verifyError);
-            } else {
-              console.log("✅ Verified new credits:", verifyCredits);
-            }
-
-            // Add purchase transaction - use auth_user_id for transactions
-            const { error: transactionError } = await supabaseAdmin!
-              .from("credit_transactions")
-              .insert({
-                user_id: currentCredits.auth_user_id,
-                type: "purchase",
-                amount: creditsToAdd,
-                description: `Purchased ${creditsToAdd} credits`,
-                metadata: {
-                  package_id: packageId,
-                  stripe_session_id: session.id,
-                  amount_paid: session.amount_total,
-                  currency: session.currency,
-                },
-              });
-
-            if (transactionError) {
-              console.error("⚠️ Error creating transaction:", transactionError);
-              // Don't fail the webhook for transaction errors
-            } else {
-              console.log("📝 Transaction recorded");
-            }
-
-            console.log(
-              `✅ Credits added: ${creditsToAdd} credits for user ${userId}`
-            );
-            console.log(`💰 New balance: ${newCreditsTotal} credits`);
+            console.log("✅ Credits added successfully:", updatedUser);
+            console.log(`💰 New balance: ${updatedUser.credits} credits`);
           } catch (error) {
             console.error("❌ Error processing payment:", error);
             return NextResponse.json(

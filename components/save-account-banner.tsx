@@ -4,20 +4,17 @@
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Shield, X } from "lucide-react";
-import { userService } from "@/lib/user-service";
+import { useUserStore } from "@/lib/stores/user-store";
 
 interface SaveAccountBannerProps {
   onSaveClick: () => void;
 }
 
 export function SaveAccountBanner({ onSaveClick }: SaveAccountBannerProps) {
-  const [isAnonymous, setIsAnonymous] = useState(false);
+  const { user, credits } = useUserStore();
   const [isDismissed, setIsDismissed] = useState(false);
-  const [hasCredits, setHasCredits] = useState(false);
 
   useEffect(() => {
-    checkUserStatus();
-
     // Check if banner was previously dismissed (stored in localStorage)
     const dismissed = localStorage.getItem("save_account_banner_dismissed");
     if (dismissed === "true") {
@@ -25,17 +22,9 @@ export function SaveAccountBanner({ onSaveClick }: SaveAccountBannerProps) {
     }
   }, []);
 
-  const checkUserStatus = async () => {
-    try {
-      const user = await userService.getCurrentUser();
-      const anonymous = userService.isAnonymous();
-
-      setIsAnonymous(anonymous);
-      setHasCredits(user ? user.credits > 0 : false);
-    } catch (error) {
-      console.error("Failed to check user status:", error);
-    }
-  };
+  // Derived state
+  const isAnonymous = user?.is_anonymous ?? true;
+  const hasCredits = (credits || 0) > 0;
 
   const handleDismiss = () => {
     setIsDismissed(true);

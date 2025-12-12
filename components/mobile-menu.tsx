@@ -14,7 +14,7 @@ import {
   User,
   CreditCard,
 } from "lucide-react";
-import { userService } from "@/lib/user-service";
+import { useUserStore } from "@/lib/stores/user-store";
 
 interface MobileMenuProps {
   onSaveAccount: () => void;
@@ -33,14 +33,13 @@ export function MobileMenu({
   onBuyCredits,
   userCredits,
 }: MobileMenuProps) {
+  const { user, signOut } = useUserStore();
   const [isOpen, setIsOpen] = useState(false);
-  const [isAnonymous, setIsAnonymous] = useState(true);
-  const [userEmail, setUserEmail] = useState<string | null>(null);
   const [signingOut, setSigningOut] = useState(false);
 
-  useEffect(() => {
-    checkUserStatus();
-  }, [userCredits]);
+  // Derived state
+  const isAnonymous = user?.is_anonymous ?? true;
+  const userEmail = user?.email || null;
 
   // Prevent body scroll when menu is open
   useEffect(() => {
@@ -55,18 +54,6 @@ export function MobileMenu({
     };
   }, [isOpen]);
 
-  const checkUserStatus = async () => {
-    try {
-      const user = await userService.getCurrentUser();
-      const anonymous = userService.isAnonymous();
-
-      setIsAnonymous(anonymous);
-      setUserEmail(user?.email || null);
-    } catch (error) {
-      console.error("Failed to check user status:", error);
-    }
-  };
-
   const handleSignOut = async () => {
     if (
       !confirm(
@@ -78,7 +65,7 @@ export function MobileMenu({
 
     try {
       setSigningOut(true);
-      await userService.signOut();
+      await signOut();
       window.location.reload();
     } catch (error) {
       console.error("Failed to sign out:", error);

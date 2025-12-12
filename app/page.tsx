@@ -10,7 +10,6 @@ import { sharingService } from "@/lib/sharing";
 import { imageUtils, formatUtils, urlUtils } from "@/lib/utils";
 import { errorHandler } from "@/lib/errors";
 import { HistoryGallery } from "@/components/history-gallery";
-import { LoadingOverlay } from "@/components/loading-states";
 import { ImagePreview } from "@/components/image-upload";
 import { GenerationProgress } from "@/components/loading-states";
 import { TestPhotos } from "@/components/test-photos";
@@ -18,12 +17,11 @@ import { CreditsDisplay } from "@/components/user-credits";
 import { SaveAccountModal } from "@/components/save-account-modal";
 import { SaveAccountBanner } from "@/components/save-account-banner";
 import { SignInModal } from "@/components/sign-in-modal";
-import { userService } from "@/lib/user-service";
-import { Shield, LogIn } from "lucide-react";
+import { useUserStore } from "@/lib/stores/user-store";
 import { AccountMenu } from "@/components/account-menu";
 import { HelpModal } from "@/components/help-modal";
 import { MobileMenu } from "@/components/mobile-menu";
-import { HelpCircle } from "lucide-react";
+import { SmartAuthPrompt } from "@/components/auth/smart-auth-prompt";
 
 interface GenerationRequest {
   image: string;
@@ -42,6 +40,18 @@ interface StatusResponse {
 }
 
 export default function LabubufyApp() {
+  // Zustand store
+  const {
+    user,
+    credits: userCredits,
+    isInitialized,
+    isLoading,
+    initialize,
+    refreshCredits,
+    spendCredit,
+    refundCredit,
+  } = useUserStore();
+
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [selectedLabubu, setSelectedLabubu] = useState<number | null>(null);
@@ -57,18 +67,59 @@ export default function LabubufyApp() {
     null
   );
   const [isTestPhoto, setIsTestPhoto] = useState(false);
-  const [userCredits, setUserCredits] = useState<number>(0);
   const [showInsufficientCreditsModal, setShowInsufficientCreditsModal] =
     useState(false);
 
   // New state for account management
   const [showSaveAccountModal, setShowSaveAccountModal] = useState(false);
   const [showSignInModal, setShowSignInModal] = useState(false);
-  const [isAnonymous, setIsAnonymous] = useState(true);
   const [justPurchased, setJustPurchased] = useState(false);
 
   // Help modal state
   const [showHelpModal, setShowHelpModal] = useState(false);
+
+  // Derived state
+  const isAnonymous = user?.is_anonymous ?? true;
+
+  // Polling state - use refs to persist across renders
+  const pollingIntervalRef = React.useRef<NodeJS.Timeout | null>(null);
+  const pollingTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+
+  // Handle credit refund
+  const handleRefundCredit = React.useCallback(
+    async (predictionId: string) => {
+      try {
+        console.log(`💰 Refunding credit for prediction: ${predictionId}`);
+        await refundCredit(predictionId);
+        console.log(`✅ Credit refunded. New balance: ${userCredits}`);
+      } catch (error) {
+        console.error("Failed to refund credit:", error);
+        // Don't show error to user for refund failures
+      }
+    },
+    [refundCredit, userCredits]
+  );
+
+  const stopPolling = React.useCallback((predictionId: string) => {
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+      pollingIntervalRef.current = null;
+    }
+
+    if (pollingTimeoutRef.current) {
+      clearTimeout(pollingTimeoutRef.current);
+      pollingTimeoutRef.current = null;
+    }
+
+    console.log(`🛑 Stopped polling for prediction: ${predictionId}`);
+  }, []);
+
+  // Initialize user store on mount
+  React.useEffect(() => {
+    if (!isInitialized && !isLoading) {
+      initialize().catch(console.error);
+    }
+  }, [isInitialized, isLoading, initialize]);
 
   // Cleanup on component unmount
   React.useEffect(() => {
@@ -77,28 +128,23 @@ export default function LabubufyApp() {
         stopPolling(currentPredictionId);
       }
     };
-  }, [currentPredictionId]);
-
-  // Check if user is anonymous
-  React.useEffect(() => {
-    const checkUserStatus = async () => {
-      const anonymous = userService.isAnonymous();
-      setIsAnonymous(anonymous);
-    };
-    checkUserStatus();
-  }, [userCredits]); // Re-check when credits update
+  }, [currentPredictionId, stopPolling]);
 
   // Check for successful payment and show save account modal
   React.useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get("payment") === "success" && isAnonymous) {
+    if (urlParams.get("payment") === "success") {
       setJustPurchased(true);
-      // Show save account modal after a short delay
-      setTimeout(() => {
-        setShowSaveAccountModal(true);
-      }, 1000);
+      // Refresh credits after payment
+      refreshCredits().catch(console.error);
+      // Show save account modal after a short delay if anonymous
+      if (isAnonymous) {
+        setTimeout(() => {
+          setShowSaveAccountModal(true);
+        }, 1000);
+      }
     }
-  }, [isAnonymous]);
+  }, [isAnonymous, refreshCredits]);
 
   const handleImageUpload = (file: File, previewUrl: string) => {
     setUploadedFile(file);
@@ -128,202 +174,191 @@ export default function LabubufyApp() {
     setError(null);
   };
 
-  const handleCreditsUpdate = (credits: number) => {
-    setUserCredits(credits);
+  const handleCreditsUpdate = () => {
+    // Credits are managed by the store, this callback is for compatibility
+    // The store will automatically update credits
   };
 
   const handleAccountSaved = async () => {
     // Refresh user status after saving account
-    const anonymous = userService.isAnonymous();
-    setIsAnonymous(anonymous);
-
-    // Refresh credits to get updated user info
-    await userService.refreshUserCredits();
-    const user = await userService.getCurrentUser();
-    if (user) {
-      setUserCredits(user.credits);
-    }
+    await refreshCredits();
   };
 
   const handleSignInSuccess = async () => {
     // Refresh user status after sign in
-    const anonymous = userService.isAnonymous();
-    setIsAnonymous(anonymous);
-
-    // Refresh credits
-    const user = await userService.getCurrentUser();
-    if (user) {
-      setUserCredits(user.credits);
-    }
+    await refreshCredits();
   };
 
-  // Polling state
-  let pollingInterval: NodeJS.Timeout | null = null;
+  const startPolling = React.useCallback(
+    (predictionId: string) => {
+      console.log(`🚀 Starting polling for prediction: ${predictionId}`);
 
-  const stopPolling = (predictionId: string) => {
-    if (pollingInterval) {
-      clearInterval(pollingInterval);
-      pollingInterval = null;
-    }
-    console.log(`🛑 Stopped polling for prediction: ${predictionId}`);
-  };
+      const checkStatus = async () => {
+        try {
+          console.log(`📡 Checking status for prediction: ${predictionId}`);
+          const response = await fetch(`/api/status/${predictionId}`);
 
-  const startPolling = (predictionId: string) => {
-    console.log(`🚀 Starting polling for prediction: ${predictionId}`);
+          if (!response.ok) {
+            throw new Error(`Status check failed: ${response.status}`);
+          }
 
-    const checkStatus = async () => {
-      try {
-        console.log(`📡 Checking status for prediction: ${predictionId}`);
-        const response = await fetch(`/api/status/${predictionId}`);
+          const status: StatusResponse = await response.json();
+          console.log(`📊 Status:`, status);
 
-        if (!response.ok) {
-          throw new Error(`Status check failed: ${response.status}`);
-        }
+          // Update progress
+          setGenerationProgress(status.progress);
+          setEstimatedTime(status.estimated_time || 0);
 
-        const status: StatusResponse = await response.json();
-        console.log(`📊 Status:`, status);
-
-        // Update progress
-        setGenerationProgress(status.progress);
-        setEstimatedTime(status.estimated_time || 0);
-
-        // Update status message
-        if (status.status === "starting") {
-          setGenerationStatus("🚀 Getting ready to create magic...");
-        } else if (status.status === "processing") {
-          if (status.progress < 20) {
-            setGenerationStatus("🎨 AI is analyzing your photo...");
-          } else if (status.progress < 50) {
-            setGenerationStatus("✨ Blending you with your Labubu...");
-          } else if (status.progress < 80) {
-            setGenerationStatus("🎭 Adding the finishing touches...");
+          // Update status message
+          if (status.status === "starting") {
+            setGenerationStatus("🚀 Getting ready to create magic...");
+          } else if (status.status === "processing") {
+            if (status.progress < 20) {
+              setGenerationStatus("🎨 AI is analyzing your photo...");
+            } else if (status.progress < 50) {
+              setGenerationStatus("✨ Blending you with your Labubu...");
+            } else if (status.progress < 80) {
+              setGenerationStatus("🎭 Adding the finishing touches...");
+            } else {
+              setGenerationStatus("🌟 Almost ready to reveal your photo...");
+            }
           } else {
-            setGenerationStatus("🌟 Almost ready to reveal your photo...");
-          }
-        } else {
-          setGenerationStatus(status.status || "processing");
-        }
-
-        // Handle completion
-        if (status.status === "succeeded") {
-          console.log(`✅ Generation completed successfully!`);
-
-          const imageUrl = Array.isArray(status.output)
-            ? status.output[0]
-            : status.output;
-
-          if (!imageUrl) {
-            throw new Error("No image URL in completed result");
+            setGenerationStatus(status.status || "processing");
           }
 
-          // Download the final image
-          const imageResponse = await fetch(imageUrl);
-          if (!imageResponse.ok) {
-            throw new Error(
-              `Failed to download image: ${imageResponse.status}`
-            );
+          // Handle completion
+          if (status.status === "succeeded") {
+            console.log(`✅ Generation completed successfully!`);
+
+            // Clear timeout since we succeeded
+            if (pollingTimeoutRef.current) {
+              clearTimeout(pollingTimeoutRef.current);
+              pollingTimeoutRef.current = null;
+            }
+
+            const imageUrl = Array.isArray(status.output)
+              ? status.output[0]
+              : status.output;
+
+            if (!imageUrl) {
+              throw new Error("No image URL in completed result");
+            }
+
+            // Download the final image
+            const imageResponse = await fetch(imageUrl);
+            if (!imageResponse.ok) {
+              throw new Error(
+                `Failed to download image: ${imageResponse.status}`
+              );
+            }
+
+            const blob = await imageResponse.blob();
+
+            // Convert blob to data URL for display
+            const reader = new FileReader();
+            reader.onload = () => {
+              const dataUrl = reader.result as string;
+              setGeneratedImage(dataUrl);
+            };
+            reader.readAsDataURL(blob);
+
+            setGeneratedBlob(blob);
+
+            // Save to history
+            if (uploadedFile && selectedLabubu !== null) {
+              await imageStorage.saveImage(uploadedFile, blob, selectedLabubu);
+            }
+
+            // Reset generation state
+            setIsGenerating(false);
+            setGenerationProgress(0);
+            setEstimatedTime(0);
+            setGenerationStatus("");
+            setCurrentPredictionId(null);
+            stopPolling(predictionId);
+          } else if (status.status === "failed") {
+            console.error(`❌ Generation failed:`, status.error);
+
+            // Refund the credit
+            await handleRefundCredit(predictionId);
+
+            throw new Error(status.error || "Generation failed");
+          } else if (
+            status.status === "processing" ||
+            status.status === "starting"
+          ) {
+            console.log(`⏳ Still processing... Progress: ${status.progress}%`);
+          }
+        } catch (err) {
+          console.error("❌ Polling error:", err);
+
+          // Clear timeout on error
+          if (pollingTimeoutRef.current) {
+            clearTimeout(pollingTimeoutRef.current);
+            pollingTimeoutRef.current = null;
           }
 
-          const blob = await imageResponse.blob();
-
-          // Convert blob to data URL for display
-          const reader = new FileReader();
-          reader.onload = () => {
-            const dataUrl = reader.result as string;
-            setGeneratedImage(dataUrl);
-          };
-          reader.readAsDataURL(blob);
-
-          setGeneratedBlob(blob);
-
-          // Save to history
-          if (uploadedFile && selectedLabubu !== null) {
-            await imageStorage.saveImage(uploadedFile, blob, selectedLabubu);
+          // Don't show error for network issues - just log and continue polling
+          if (err instanceof Error && (
+            err.message.includes("network") ||
+            err.message.includes("fetch") ||
+            err.message.includes("Failed to fetch")
+          )) {
+            console.warn("Network error during status check, will retry...");
+            return; // Continue polling
           }
 
-          // Reset generation state
+          // For other errors, show error and stop
+          const appError = errorHandler.parseError(err);
+          setError(errorHandler.getUserMessage(appError));
           setIsGenerating(false);
           setGenerationProgress(0);
           setEstimatedTime(0);
           setGenerationStatus("");
           setCurrentPredictionId(null);
           stopPolling(predictionId);
-        } else if (status.status === "failed") {
-          console.error(`❌ Generation failed:`, status.error);
-
-          // Refund the credit
-          await handleRefundCredit(predictionId);
-
-          throw new Error(status.error || "Generation failed");
-        } else if (
-          status.status === "processing" ||
-          status.status === "starting"
-        ) {
-          console.log(`⏳ Still processing... Progress: ${status.progress}%`);
         }
-      } catch (err) {
-        console.error("❌ Polling error:", err);
-        const appError = errorHandler.parseError(err);
-        setError(errorHandler.getUserMessage(appError));
-        setIsGenerating(false);
-        setGenerationProgress(0);
-        setEstimatedTime(0);
-        setGenerationStatus("");
-        setCurrentPredictionId(null);
-        stopPolling(predictionId);
-      }
-    };
+      };
 
-    // Start polling immediately, then every 2 seconds
-    checkStatus();
-    pollingInterval = setInterval(checkStatus, 2000);
+      // Start polling immediately, then every 2 seconds
+      checkStatus();
+      pollingIntervalRef.current = setInterval(checkStatus, 2000);
 
-    // Set timeout to prevent infinite polling
-    setTimeout(() => {
-      if (pollingInterval) {
-        console.log(`⏰ Polling timeout reached for ${predictionId}`);
-        stopPolling(predictionId);
+      // Set timeout to prevent infinite polling (3 minutes for Nano Banana Pro)
+      pollingTimeoutRef.current = setTimeout(() => {
+        if (pollingIntervalRef.current) {
+          console.log(`⏰ Polling timeout reached for ${predictionId}`);
+          stopPolling(predictionId);
 
-        // Refund credit on timeout
-        handleRefundCredit(predictionId).catch(console.error);
+          // Refund credit on timeout
+          handleRefundCredit(predictionId).catch(console.error);
 
-        setError("Generation timeout - please try again");
-        setIsGenerating(false);
-        setGenerationProgress(0);
-        setEstimatedTime(0);
-        setGenerationStatus("");
-        setCurrentPredictionId(null);
-      }
-    }, 90000); // 1.5 minutes
-  };
-
-  // Handle credit refund
-  const handleRefundCredit = async (predictionId: string) => {
-    try {
-      console.log(`💰 Refunding credit for prediction: ${predictionId}`);
-      const updatedUser = await userService.refundCredits(predictionId);
-      setUserCredits(updatedUser.credits);
-      console.log(`✅ Credit refunded. New balance: ${updatedUser.credits}`);
-    } catch (error) {
-      console.error("Failed to refund credit:", error);
-      // Don't show error to user for refund failures
-    }
-  };
+          setError("Generation is taking longer than expected. Your credit has been refunded - please try again.");
+          setIsGenerating(false);
+          setGenerationProgress(0);
+          setEstimatedTime(0);
+          setGenerationStatus("");
+          setCurrentPredictionId(null);
+        }
+      }, 180000); // 3 minutes - increased for Nano Banana Pro
+    },
+    [stopPolling, handleRefundCredit, uploadedFile, selectedLabubu]
+  );
 
   // Main generation handler
   const handleGenerate = async () => {
     if (!uploadedImage || selectedLabubu === null) return;
 
     // Check if user has credits
-    const { canGenerate, credits } = await userService.canGenerate();
-
-    if (!canGenerate) {
+    if (!user || userCredits < 1) {
       console.log("❌ Insufficient credits");
       setShowInsufficientCreditsModal(true);
       return;
     }
 
-    console.log(`✅ User has ${credits} credits, proceeding with generation`);
+    console.log(
+      `✅ User has ${userCredits} credits, proceeding with generation`
+    );
 
     setIsGenerating(true);
     setGenerationProgress(0);
@@ -424,9 +459,12 @@ export default function LabubufyApp() {
       // NOW spend the credit AFTER successful generation start
       try {
         console.log(`💰 Spending 1 credit for prediction: ${predictionId}`);
-        const updatedUser = await userService.spendCredits(predictionId);
-        setUserCredits(updatedUser.credits);
-        console.log(`✅ Credit spent. New balance: ${updatedUser.credits}`);
+        const success = await spendCredit(predictionId);
+        if (!success) {
+          console.error("Failed to spend credit");
+        } else {
+          console.log(`✅ Credit spent. New balance: ${userCredits}`);
+        }
       } catch (spendError) {
         console.error("Failed to spend credit:", spendError);
         // If credit spending fails, we should still continue with generation
@@ -748,6 +786,9 @@ export default function LabubufyApp() {
         onClose={() => setShowSignInModal(false)}
         onSuccess={handleSignInSuccess}
       />
+
+      {/* Smart Auth Prompt */}
+      <SmartAuthPrompt />
     </div>
   );
 }

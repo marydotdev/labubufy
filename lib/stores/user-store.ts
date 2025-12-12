@@ -33,6 +33,7 @@ export const useUserStore = create<UserState>()(
       isInitialized: false,
 
       initialize: async () => {
+        
         if (get().isInitialized && get().user) {
           // Already initialized, just refresh credits
           await get().refreshCredits();
@@ -42,6 +43,7 @@ export const useUserStore = create<UserState>()(
         set({ isLoading: true });
         try {
           const user = await authService.initialize();
+          
           set({
             user,
             credits: user.credits,
@@ -62,6 +64,14 @@ export const useUserStore = create<UserState>()(
           return false;
         }
 
+        // Get auth token
+        const token = await authService.getAccessToken();
+
+        if (!token) {
+          console.error("No session token available");
+          return false;
+        }
+
         // Optimistic update
         const oldCredits = credits;
         set({ credits: credits - 1 });
@@ -69,15 +79,18 @@ export const useUserStore = create<UserState>()(
         try {
           const response = await fetch("/api/credits/spend", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
             body: JSON.stringify({
-              userId: user?.id,
               predictionId,
             }),
           });
 
           if (!response.ok) {
-            throw new Error("Failed to spend credit");
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || "Failed to spend credit");
           }
 
           // Refresh credits from server
@@ -99,12 +112,22 @@ export const useUserStore = create<UserState>()(
           return;
         }
 
+        // Get auth token
+        const token = await authService.getAccessToken();
+
+        if (!token) {
+          console.error("No session token available for refund");
+          return;
+        }
+
         try {
           const response = await fetch("/api/credits/refund", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
             body: JSON.stringify({
-              userId: user.id,
               predictionId,
             }),
           });
@@ -112,6 +135,9 @@ export const useUserStore = create<UserState>()(
           if (response.ok) {
             // Refresh credits from server
             await get().refreshCredits();
+          } else {
+            const errorData = await response.json().catch(() => ({}));
+            console.error("Refund failed:", errorData.error || "Unknown error");
           }
         } catch (error) {
           console.error("Failed to refund credit:", error);
@@ -162,14 +188,31 @@ export const useUserStore = create<UserState>()(
       signInWithEmail: async (email: string, password: string) => {
         set({ isLoading: true });
         try {
+          // Store anonymous user ID before signing in (if current user is anonymous)
+          const currentUser = get().user;
+          
+          if (currentUser?.is_anonymous && typeof window !== "undefined") {
+            localStorage.setItem(
+              "labubufy_anonymous_auth_id",
+              currentUser.auth_id
+            );
+            
+          }
+
+          console.log("🔐 Signing in with email:", email);
           const user = await authService.signInWithEmail(email, password);
+          console.log("✅ Sign in successful, user:", user);
+
           set({
             user,
             credits: user.credits,
             isInitialized: true,
             isLoading: false,
           });
+
+          console.log("✅ User store updated after sign in");
         } catch (error) {
+          console.error("❌ Sign in error:", error);
           set({ isLoading: false });
           throw error;
         }
@@ -178,14 +221,50 @@ export const useUserStore = create<UserState>()(
       signUpWithEmail: async (email: string, password: string) => {
         set({ isLoading: true });
         try {
+          // Store anonymous user ID before signing up (if current user is anonymous)
+          const currentUser = get().user;
+          if (currentUser?.is_anonymous && typeof window !== "undefined") {
+            localStorage.setItem(
+              "labubufy_anonymous_auth_id",
+              currentUser.auth_id
+            );
+          }
+
+          console.log("🔐 Signing up with email:", email);
           const user = await authService.signUpWithEmail(email, password);
-          set({
-            user,
-            credits: user.credits,
-            isInitialized: true,
-            isLoading: false,
-          });
+          console.log("✅ Sign up successful, user:", user);
+
+          // Check if we have a session (email confirmation might be disabled)
+          const supabase = authService.getSupabaseClient();
+          const {
+            data: { session },
+          } = await supabase.auth.getSession();
+
+          if (session) {
+            // We have a session - update store
+            set({
+              user,
+              credits: user.credits,
+              isInitialized: true,
+              isLoading: false,
+            });
+            console.log("✅ User store updated after sign up (with session)");
+          } else {
+            // No session - email confirmation required
+            // Still update user but mark that confirmation is needed
+            set({
+              user,
+              credits: user.credits,
+              isInitialized: true,
+              isLoading: false,
+            });
+            console.log(
+              "⚠️ User store updated but email confirmation required"
+            );
+            throw new Error("EMAIL_CONFIRMATION_REQUIRED");
+          }
         } catch (error) {
+          console.error("❌ Sign up error:", error);
           set({ isLoading: false });
           throw error;
         }
@@ -202,8 +281,10 @@ export const useUserStore = create<UserState>()(
       },
 
       signOut: async () => {
+        
         try {
           await authService.signOut();
+          
           get().reset();
         } catch (error) {
           console.error("Failed to sign out:", error);
@@ -216,42 +297,42 @@ export const useUserStore = create<UserState>()(
         if (!user) return;
 
         try {
-          // Get fresh user data from auth service
-          const supabase = authService.getSupabaseClient();
-          const {
-            data: { session },
-          } = await supabase.auth.getSession();
+          // Get fresh user data via API route (which handles IP/fingerprint properly)
+          const token = await authService.getAccessToken();
+          if (!token) {
+            console.error("No session token available for refresh");
+            return;
+          }
 
-          if (session?.user) {
-            const { data, error } = await supabase.rpc("ensure_user_exists", {
-              auth_id: session.user.id,
-              email: session.user.email,
-              is_anonymous: session.user.is_anonymous ?? true,
-            });
+          // Generate browser fingerprint for tracking
+          const browserFingerprint =
+            typeof window !== "undefined"
+              ? await import("@/lib/utils/ip-fingerprint").then((m) =>
+                  m.generateBrowserFingerprint()
+                )
+              : null;
 
-            if (!error && data) {
-              const userData = data as {
-                id: string;
-                auth_user_id: string;
-                email: string | null;
-                is_anonymous: boolean;
-                credits: number;
-                total_purchased?: number;
-                total_spent?: number;
-              };
+          const response = await fetch("/api/users/initialize", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              browserFingerprint: browserFingerprint,
+            }),
+          });
+
+          if (response.ok) {
+            const result = await response.json();
+            if (result.user) {
               set({
-                user: {
-                  id: userData.id,
-                  auth_id: userData.auth_user_id, // Function returns auth_user_id
-                  email: userData.email,
-                  is_anonymous: userData.is_anonymous,
-                  credits: userData.credits || 0,
-                  total_purchased: userData.total_purchased || 0,
-                  total_spent: userData.total_spent || 0,
-                },
-                credits: userData.credits || 0,
+                user: result.user,
+                credits: result.user.credits || 0,
               });
             }
+          } else {
+            console.error("Failed to refresh credits:", await response.text());
           }
         } catch (error) {
           console.error("Failed to refresh credits:", error);
@@ -269,7 +350,7 @@ export const useUserStore = create<UserState>()(
     }),
     {
       name: "labubufy-user",
-      storage: createJSONStorage(() => sessionStorage),
+      storage: createJSONStorage(() => localStorage),
       // Only persist user and credits, not loading states
       partialize: (state) => ({
         user: state.user,

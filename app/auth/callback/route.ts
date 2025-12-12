@@ -35,10 +35,17 @@ export async function GET(request: NextRequest) {
       );
 
       try {
+        // Get client IP for tracking
+        const clientIP = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+                        request.headers.get('x-real-ip') ||
+                        null;
+
         await supabaseAdmin.rpc('ensure_user_exists', {
           auth_id: data.session.user.id,
           email: data.session.user.email,
-          is_anonymous: false
+          is_anonymous: false,
+          ip_address: clientIP || null,
+          browser_fingerprint: null, // OAuth callback doesn't have fingerprint
         });
       } catch (err) {
         console.error('Failed to ensure user record:', err);

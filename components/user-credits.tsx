@@ -4,12 +4,9 @@
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Coins, Plus, History, ShoppingCart, X, Gift } from "lucide-react";
-import {
-  userService,
-  type AppUser,
-  type CreditTransaction,
-} from "@/lib/user-service";
+import { useUserStore } from "@/lib/stores/user-store";
 import { PRICING } from "@/lib/payments/stripe-service";
+import { supabase } from "@/lib/supabase";
 
 // Type for credit packages
 type CreditPackage = {
@@ -30,6 +27,17 @@ const CREDIT_PACKAGES: (CreditPackage & { name: string; credits: number })[] = P
 }));
 import { cn } from "@/lib/utils";
 
+// Type for credit events from the new schema
+interface CreditEvent {
+  id: string;
+  user_id: string;
+  type: "welcome" | "purchase" | "spend" | "refund";
+  amount: number;
+  description: string | null;
+  metadata: Record<string, any> | null;
+  created_at: string;
+}
+
 interface CreditsDisplayProps {
   onCreditsUpdate?: (credits: number) => void;
   className?: string;
@@ -39,28 +47,24 @@ export function CreditsDisplay({
   onCreditsUpdate,
   className,
 }: CreditsDisplayProps) {
-  const [user, setUser] = useState<AppUser | null>(null);
+  const { user, credits, isInitialized, isLoading, initialize } = useUserStore();
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadUser();
-  }, []);
-
-  const loadUser = async () => {
-    try {
-      const userData = await userService.getOrCreateUser();
-      setUser(userData);
-      onCreditsUpdate?.(userData.credits);
-    } catch (error) {
-      console.error("Failed to load user:", error);
-    } finally {
-      setLoading(false);
+    if (!isInitialized && !isLoading) {
+      initialize().catch(console.error);
     }
-  };
+  }, [isInitialized, isLoading, initialize]);
 
-  if (loading) {
+  // Notify parent of credits update
+  useEffect(() => {
+    if (user && credits !== undefined) {
+      onCreditsUpdate?.(credits);
+    }
+  }, [credits, user, onCreditsUpdate]);
+
+  if (isLoading || !isInitialized) {
     return (
       <div className={cn("flex items-center gap-2", className)}>
         <div className="w-6 h-6 border-2 border-violet-300 border-t-violet-600 rounded-full animate-spin" />
@@ -78,7 +82,7 @@ export function CreditsDisplay({
         >
           <Coins className="w-5 h-5 text-white" />
           <span className="text-white font-bold text-lg">
-            {user?.credits || 0}
+            {credits || 0}
           </span>
         </div>
 
@@ -107,7 +111,9 @@ export function CreditsDisplay({
         <CreditPurchaseModal
           userId={user.id}
           onClose={() => setShowPurchaseModal(false)}
-          onPurchaseComplete={loadUser}
+          onPurchaseComplete={() => {
+            // Credits will be refreshed by the store automatically
+          }}
         />
       )}
 
@@ -267,17 +273,34 @@ interface CreditHistoryModalProps {
 }
 
 function CreditHistoryModal({ onClose }: CreditHistoryModalProps) {
-  const [transactions, setTransactions] = useState<CreditTransaction[]>([]);
+  const { user } = useUserStore();
+  const [transactions, setTransactions] = useState<CreditEvent[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     loadHistory();
-  }, []);
+  }, [user]);
 
   const loadHistory = async () => {
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+
     try {
-      const history = await userService.getTransactionHistory();
-      setTransactions(history);
+      // Query credit_events table using user's auth_id (which is auth_user_id)
+      const { data, error } = await supabase
+        .from("credit_events")
+        .select("*")
+        .eq("user_id", user.auth_id)
+        .order("created_at", { ascending: false })
+        .limit(50);
+
+      if (error) {
+        throw new Error(`Failed to fetch transactions: ${error.message}`);
+      }
+
+      setTransactions((data as CreditEvent[]) || []);
     } catch (error) {
       console.error("Failed to load history:", error);
     } finally {
@@ -293,7 +316,7 @@ function CreditHistoryModal({ onClose }: CreditHistoryModalProps) {
         return <Coins className="w-4 h-4 text-red-600" />;
       case "refund":
         return <Coins className="w-4 h-4 text-blue-600" />;
-      case "bonus":
+      case "welcome":
         return <Gift className="w-4 h-4 text-purple-600" />;
       default:
         return <Coins className="w-4 h-4 text-gray-600" />;

@@ -11,7 +11,7 @@ import {
   Settings,
   ChevronDown,
 } from "lucide-react";
-import { userService } from "@/lib/user-service";
+import { useUserStore } from "@/lib/stores/user-store";
 
 interface AccountMenuProps {
   onSaveAccount: () => void;
@@ -26,15 +26,14 @@ export function AccountMenu({
   onShowHistory,
   className,
 }: AccountMenuProps) {
+  const { user, signOut } = useUserStore();
   const [isOpen, setIsOpen] = useState(false);
-  const [isAnonymous, setIsAnonymous] = useState(true);
-  const [userEmail, setUserEmail] = useState<string | null>(null);
   const [signingOut, setSigningOut] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    checkUserStatus();
-  }, []);
+  // Derived state
+  const isAnonymous = user?.is_anonymous ?? true;
+  const userEmail = user?.email || null;
 
   // Close menu when clicking outside
   useEffect(() => {
@@ -52,18 +51,6 @@ export function AccountMenu({
     }
   }, [isOpen]);
 
-  const checkUserStatus = async () => {
-    try {
-      const user = await userService.getCurrentUser();
-      const anonymous = userService.isAnonymous();
-
-      setIsAnonymous(anonymous);
-      setUserEmail(user?.email || null);
-    } catch (error) {
-      console.error("Failed to check user status:", error);
-    }
-  };
-
   const handleSignOut = async () => {
     if (
       !confirm(
@@ -75,7 +62,7 @@ export function AccountMenu({
 
     try {
       setSigningOut(true);
-      await userService.signOut();
+      await signOut();
 
       // Reload page to reset state
       window.location.reload();
