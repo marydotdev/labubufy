@@ -1,26 +1,27 @@
 "use client";
 
-import React from "react";
-import { useState } from "react";
+import React, { useState } from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import {
-  Download,
-  Share2,
-  History,
-  MessageCircleQuestionMark,
-  Rewind,
-  RefreshCcw,
-} from "lucide-react";
+import { ImageUpload } from "@/components/image-upload";
 import { LabubuSelection } from "@/components/labubu-selection";
-import { ImageUpload, ImagePreview } from "@/components/image-upload";
-import { GenerationProgress } from "@/components/loading-states";
-import { HistoryGallery } from "@/components/history-gallery";
-import { errorHandler } from "@/lib/errors";
-import { imageUtils, formatUtils, urlUtils } from "@/lib/utils";
 import { imageStorage } from "@/lib/storage";
 import { sharingService } from "@/lib/sharing";
-import Image from "next/image";
-import Link from "next/link";
+import { imageUtils, formatUtils, urlUtils } from "@/lib/utils";
+import { errorHandler } from "@/lib/errors";
+import { HistoryGallery } from "@/components/history-gallery";
+import { ImagePreview } from "@/components/image-upload";
+import { GenerationProgress } from "@/components/loading-states";
+import { TestPhotos } from "@/components/test-photos";
+import { CreditsDisplay } from "@/components/user-credits";
+import { SaveAccountModal } from "@/components/save-account-modal";
+import { SaveAccountBanner } from "@/components/save-account-banner";
+import { SignInModal } from "@/components/sign-in-modal";
+import { useUserStore } from "@/lib/stores/user-store";
+import { AccountMenu } from "@/components/account-menu";
+import { HelpModal } from "@/components/help-modal";
+import { MobileMenu } from "@/components/mobile-menu";
+import { SmartAuthPrompt } from "@/components/auth/smart-auth-prompt";
 
 interface GenerationRequest {
   image: string;
@@ -39,6 +40,18 @@ interface StatusResponse {
 }
 
 export default function LabubufyApp() {
+  // Zustand store
+  const {
+    user,
+    credits: userCredits,
+    isInitialized,
+    isLoading,
+    initialize,
+    refreshCredits,
+    spendCredit,
+    refundCredit,
+  } = useUserStore();
+
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [selectedLabubu, setSelectedLabubu] = useState<number | null>(null);
@@ -53,6 +66,60 @@ export default function LabubufyApp() {
   const [currentPredictionId, setCurrentPredictionId] = useState<string | null>(
     null
   );
+  const [isTestPhoto, setIsTestPhoto] = useState(false);
+  const [showInsufficientCreditsModal, setShowInsufficientCreditsModal] =
+    useState(false);
+
+  // New state for account management
+  const [showSaveAccountModal, setShowSaveAccountModal] = useState(false);
+  const [showSignInModal, setShowSignInModal] = useState(false);
+  const [justPurchased, setJustPurchased] = useState(false);
+
+  // Help modal state
+  const [showHelpModal, setShowHelpModal] = useState(false);
+
+  // Derived state
+  const isAnonymous = user?.is_anonymous ?? true;
+
+  // Polling state - use refs to persist across renders
+  const pollingIntervalRef = React.useRef<NodeJS.Timeout | null>(null);
+  const pollingTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+
+  // Handle credit refund
+  const handleRefundCredit = React.useCallback(
+    async (predictionId: string) => {
+      try {
+        console.log(`💰 Refunding credit for prediction: ${predictionId}`);
+        await refundCredit(predictionId);
+        console.log(`✅ Credit refunded. New balance: ${userCredits}`);
+      } catch (error) {
+        console.error("Failed to refund credit:", error);
+        // Don't show error to user for refund failures
+      }
+    },
+    [refundCredit, userCredits]
+  );
+
+  const stopPolling = React.useCallback((predictionId: string) => {
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+      pollingIntervalRef.current = null;
+    }
+
+    if (pollingTimeoutRef.current) {
+      clearTimeout(pollingTimeoutRef.current);
+      pollingTimeoutRef.current = null;
+    }
+
+    console.log(`🛑 Stopped polling for prediction: ${predictionId}`);
+  }, []);
+
+  // Initialize user store on mount
+  React.useEffect(() => {
+    if (!isInitialized && !isLoading) {
+      initialize().catch(console.error);
+    }
+  }, [isInitialized, isLoading, initialize]);
 
   // Cleanup on component unmount
   React.useEffect(() => {
@@ -61,11 +128,35 @@ export default function LabubufyApp() {
         stopPolling(currentPredictionId);
       }
     };
-  }, [currentPredictionId]);
+  }, [currentPredictionId, stopPolling]);
+
+  // Check for successful payment and show save account modal
+  // Use ref to prevent multiple executions
+  const hasProcessedPaymentRef = React.useRef(false);
+  React.useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (
+      urlParams.get("payment") === "success" &&
+      !hasProcessedPaymentRef.current
+    ) {
+      hasProcessedPaymentRef.current = true;
+      setJustPurchased(true);
+      // Refresh credits after payment
+      refreshCredits().catch(console.error);
+      // Show save account modal after a short delay if anonymous
+      if (isAnonymous) {
+        setTimeout(() => {
+          setShowSaveAccountModal(true);
+        }, 1000);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAnonymous]); // refreshCredits intentionally excluded to prevent infinite loop
 
   const handleImageUpload = (file: File, previewUrl: string) => {
     setUploadedFile(file);
     setUploadedImage(previewUrl);
+    setIsTestPhoto(false);
     setError(null);
   };
 
@@ -74,190 +165,307 @@ export default function LabubufyApp() {
     setUploadedImage(null);
     setGeneratedImage(null);
     setGeneratedBlob(null);
+    setSelectedLabubu(null);
+    setIsTestPhoto(false);
   };
 
   const handleUploadError = (errorMessage: string) => {
     setError(errorMessage);
   };
 
-  // Polling state
-  let pollingInterval: NodeJS.Timeout | null = null;
-
-  const stopPolling = (predictionId: string) => {
-    if (pollingInterval) {
-      clearInterval(pollingInterval);
-      pollingInterval = null;
-    }
-    console.log(`🛑 Stopped polling for prediction: ${predictionId}`);
+  const handleTestPhotoSelect = (originalImage: string) => {
+    setUploadedImage(originalImage);
+    setGeneratedImage(null);
+    setGeneratedBlob(null);
+    setIsTestPhoto(true);
+    setError(null);
   };
 
-  const startPolling = (predictionId: string) => {
-    console.log(`🚀 Starting polling for prediction: ${predictionId}`);
+  const handleCreditsUpdate = () => {
+    // Credits are managed by the store, this callback is for compatibility
+    // The store will automatically update credits
+  };
 
-    const checkStatus = async () => {
-      try {
-        console.log(`📡 Checking status for prediction: ${predictionId}`);
-        const response = await fetch(`/api/status/${predictionId}`);
+  const handleAccountSaved = async () => {
+    // Refresh user status after saving account
+    await refreshCredits();
+  };
 
-        if (!response.ok) {
-          throw new Error(`Status check failed: ${response.status}`);
-        }
+  const handleSignInSuccess = async () => {
+    // Refresh user status after sign in
+    await refreshCredits();
+  };
 
-        const status: StatusResponse = await response.json();
-        console.log(`📊 Raw status response:`, JSON.stringify(status, null, 2));
+  const startPolling = React.useCallback(
+    (predictionId: string) => {
+      console.log(`🚀 Starting polling for prediction: ${predictionId}`);
 
-        // Update progress
-        setGenerationProgress(status.progress);
-        setEstimatedTime(status.estimated_time || 0);
+      const checkStatus = async () => {
+        try {
+          console.log(`📡 Checking status for prediction: ${predictionId}`);
+          const response = await fetch(`/api/status/${predictionId}`);
 
-        // Update status message for single-step generation with encouraging messages
-        if (status.status === "starting") {
-          setGenerationStatus("🚀 Getting ready to create magic...");
-        } else if (status.status === "processing") {
-          if (status.progress < 20) {
-            setGenerationStatus("🎨 AI is analyzing your photo...");
-          } else if (status.progress < 50) {
-            setGenerationStatus("✨ Blending you with your Labubu...");
-          } else if (status.progress < 80) {
-            setGenerationStatus("🎭 Adding the finishing touches...");
+          if (!response.ok) {
+            throw new Error(`Status check failed: ${response.status}`);
+          }
+
+          const status: StatusResponse = await response.json();
+          console.log(`📊 Status:`, status);
+
+          // Update progress
+          setGenerationProgress(status.progress);
+          setEstimatedTime(status.estimated_time || 0);
+
+          // Update status message
+          if (status.status === "starting") {
+            setGenerationStatus("🚀 Getting ready to create magic...");
+          } else if (status.status === "processing") {
+            if (status.progress < 20) {
+              setGenerationStatus("🎨 AI is analyzing your photo...");
+            } else if (status.progress < 50) {
+              setGenerationStatus("✨ Blending you with your Labubu...");
+            } else if (status.progress < 80) {
+              setGenerationStatus("🎭 Adding the finishing touches...");
+            } else {
+              setGenerationStatus("🌟 Almost ready to reveal your photo...");
+            }
           } else {
-            setGenerationStatus("🌟 Almost ready to reveal your photo...");
-          }
-        } else {
-          setGenerationStatus(status.status || "processing");
-        }
-
-        console.log(`🔄 Status: ${status.status}, Progress: ${status.progress}%`);
-
-        // CRITICAL: Only handle completion when status is 'succeeded'
-        if (status.status === "succeeded") {
-          console.log(`✅ Generation completed successfully!`);
-          console.log(`📸 Output received:`, status.output);
-
-          const imageUrl = Array.isArray(status.output)
-            ? status.output[0]
-            : status.output;
-
-          if (!imageUrl) {
-            throw new Error("No image URL in completed result");
+            setGenerationStatus(status.status || "processing");
           }
 
-          console.log(`🖼️ Final image URL: ${imageUrl}`);
+          // Handle completion
+          if (status.status === "succeeded") {
+            console.log(`✅ Generation completed successfully!`);
 
-          // Check if this is actually the final step 2 URL
-          if (!imageUrl.includes("replicate.delivery")) {
-            console.warn(
-              `⚠️ Image URL doesn't look like a Replicate URL: ${imageUrl}`
-            );
+            // Clear timeout since we succeeded
+            if (pollingTimeoutRef.current) {
+              clearTimeout(pollingTimeoutRef.current);
+              pollingTimeoutRef.current = null;
+            }
+
+            const imageUrl = Array.isArray(status.output)
+              ? status.output[0]
+              : status.output;
+
+            if (!imageUrl) {
+              throw new Error("No image URL in completed result");
+            }
+
+            // Download the final image
+            const imageResponse = await fetch(imageUrl);
+            if (!imageResponse.ok) {
+              throw new Error(
+                `Failed to download image: ${imageResponse.status}`
+              );
+            }
+
+            const blob = await imageResponse.blob();
+
+            // Convert blob to data URL for display
+            const reader = new FileReader();
+            reader.onload = () => {
+              const dataUrl = reader.result as string;
+              setGeneratedImage(dataUrl);
+            };
+            reader.readAsDataURL(blob);
+
+            setGeneratedBlob(blob);
+
+            // Save to history
+            if (uploadedFile && selectedLabubu !== null) {
+              await imageStorage.saveImage(uploadedFile, blob, selectedLabubu);
+            }
+
+            // Reset generation state
+            setIsGenerating(false);
+            setGenerationProgress(0);
+            setEstimatedTime(0);
+            setGenerationStatus("");
+            setCurrentPredictionId(null);
+            stopPolling(predictionId);
+          } else if (status.status === "failed") {
+            console.error(`❌ Generation failed:`, status.error);
+
+            // Refund the credit
+            await handleRefundCredit(predictionId);
+
+            throw new Error(status.error || "Generation failed");
+          } else if (
+            status.status === "processing" ||
+            status.status === "starting"
+          ) {
+            console.log(`⏳ Still processing... Progress: ${status.progress}%`);
+          }
+        } catch (err) {
+          console.error("❌ Polling error:", err);
+
+          // Clear timeout on error
+          if (pollingTimeoutRef.current) {
+            clearTimeout(pollingTimeoutRef.current);
+            pollingTimeoutRef.current = null;
           }
 
-          // Download the final image
-          console.log(`📥 Downloading final image...`);
-          const imageResponse = await fetch(imageUrl);
-          if (!imageResponse.ok) {
-            throw new Error(
-              `Failed to download image: ${imageResponse.status}`
-            );
+          // Don't show error for network issues - just log and continue polling
+          if (
+            err instanceof Error &&
+            (err.message.includes("network") ||
+              err.message.includes("fetch") ||
+              err.message.includes("Failed to fetch"))
+          ) {
+            console.warn("Network error during status check, will retry...");
+            return; // Continue polling
           }
 
-          const blob = await imageResponse.blob();
-          console.log(`💾 Downloaded blob size: ${blob.size} bytes`);
-
-          // Convert blob to data URL for display
-          const reader = new FileReader();
-          reader.onload = () => {
-            const dataUrl = reader.result as string;
-            console.log(
-              `🎨 Setting generated image (data URL length: ${dataUrl.length})`
-            );
-            setGeneratedImage(dataUrl);
-          };
-          reader.readAsDataURL(blob);
-
-          setGeneratedBlob(blob);
-
-          // Save to history
-          if (uploadedFile && selectedLabubu !== null) {
-            console.log(`💾 Saving to history...`);
-            await imageStorage.saveImage(uploadedFile, blob, selectedLabubu);
-          }
-
-          // Reset generation state
-          console.log(`🏁 Resetting generation state`);
+          // For other errors, show error and stop
+          const appError = errorHandler.parseError(err);
+          setError(errorHandler.getUserMessage(appError));
           setIsGenerating(false);
           setGenerationProgress(0);
           setEstimatedTime(0);
           setGenerationStatus("");
           setCurrentPredictionId(null);
           stopPolling(predictionId);
-        } else if (status.status === "failed") {
-          console.error(`❌ Generation failed:`, status.error);
-          throw new Error(status.error || "Generation failed");
-        } else if (
-          status.status === "processing" ||
-          status.status === "starting"
-        ) {
-          // Continue polling if still processing
-          console.log(
-            `⏳ Still processing... Progress: ${status.progress}%`
-          );
-          console.log(`⏰ Estimated time remaining: ${status.estimated_time}s`);
-        } else {
-          console.warn(`🤔 Unexpected status: ${status.status}`);
         }
-      } catch (err) {
-        console.error("❌ Polling error:", err);
-        const appError = errorHandler.parseError(err);
-        setError(errorHandler.getUserMessage(appError));
-        setIsGenerating(false);
-        setGenerationProgress(0);
-        setEstimatedTime(0);
-        setGenerationStatus("");
-        setCurrentPredictionId(null);
-        stopPolling(predictionId);
-      }
-    };
+      };
 
-    // Start polling immediately, then every 2 seconds
-    checkStatus();
-    pollingInterval = setInterval(checkStatus, 2000);
+      // Start polling immediately, then every 2 seconds
+      checkStatus();
+      pollingIntervalRef.current = setInterval(checkStatus, 2000);
 
-    // Set timeout to prevent infinite polling
-    setTimeout(() => {
-      if (pollingInterval) {
-        console.log(`⏰ Polling timeout reached for ${predictionId}`);
-        stopPolling(predictionId);
-        setError("Generation timeout - please try again");
-        setIsGenerating(false);
-        setGenerationProgress(0);
-        setEstimatedTime(0);
-        setGenerationStatus("");
-        setCurrentPredictionId(null);
-      }
-    }, 90000); // 1.5 minutes for single-step generation
-  };
+      // Set timeout to prevent infinite polling (3 minutes for Nano Banana Pro)
+      pollingTimeoutRef.current = setTimeout(() => {
+        if (pollingIntervalRef.current) {
+          console.log(`⏰ Polling timeout reached for ${predictionId}`);
+          stopPolling(predictionId);
 
+          // Refund credit on timeout
+          handleRefundCredit(predictionId).catch(console.error);
+
+          setError(
+            "Generation is taking longer than expected. Your credit has been refunded - please try again."
+          );
+          setIsGenerating(false);
+          setGenerationProgress(0);
+          setEstimatedTime(0);
+          setGenerationStatus("");
+          setCurrentPredictionId(null);
+        }
+      }, 180000); // 3 minutes - increased for Nano Banana Pro
+    },
+    [stopPolling, handleRefundCredit, uploadedFile, selectedLabubu]
+  );
+
+  // Main generation handler
   const handleGenerate = async () => {
-    if (!uploadedFile || selectedLabubu === null) return;
+    if (!uploadedImage || selectedLabubu === null) return;
 
+    // Check if user has credits
+    if (!user || userCredits < 1) {
+      console.log("❌ Insufficient credits");
+      setShowInsufficientCreditsModal(true);
+      return;
+    }
 
+    console.log(
+      `✅ User has ${userCredits} credits, proceeding with generation`
+    );
+
+    setIsGenerating(true);
+    setGenerationProgress(0);
+    setEstimatedTime(45);
+    setGenerationStatus("Initializing...");
+    setError(null);
+    setGeneratedImage(null);
+    setGeneratedBlob(null);
 
     try {
-      setError(null);
-      setIsGenerating(true);
-      setGenerationProgress(0);
-      setEstimatedTime(0);
-      setGenerationStatus("🎬 Starting your Labubu transformation...");
+      // Test photo simulation
+      if (isTestPhoto) {
+        const testPhotoNumber = uploadedImage.match(/original(\d+)/)?.[1];
+        console.log(`🧪 Test mode: Using test photo ${testPhotoNumber}`);
 
-      console.log(`🎬 Starting generation for Labubu ${selectedLabubu}`);
+        // Generate a unique prediction ID for test photos
+        const testPredictionId = `test_${Date.now()}_${Math.random()
+          .toString(36)
+          .substring(7)}`;
 
-      // Convert file to base64 for API
+        // Spend credit for test photo generation
+        try {
+          console.log(
+            `💰 Spending 1 credit for test photo: ${testPredictionId}`
+          );
+          const success = await spendCredit(testPredictionId);
+          if (!success) {
+            console.error("Failed to spend credit for test photo");
+            setError("Failed to spend credit. Please try again.");
+            setIsGenerating(false);
+            return;
+          } else {
+            console.log(
+              `✅ Credit spent for test photo. New balance: ${userCredits}`
+            );
+          }
+        } catch (spendError) {
+          console.error("Failed to spend credit for test photo:", spendError);
+          setError("Failed to spend credit. Please try again.");
+          setIsGenerating(false);
+          return;
+        }
+
+        const messages = [
+          "🎨 AI is analyzing your photo...",
+          "✨ Blending you with your Labubu...",
+          "🎭 Adding the finishing touches...",
+          "🌟 Almost ready to reveal your photo...",
+        ];
+        let messageIndex = 0;
+
+        const progressInterval = setInterval(() => {
+          setGenerationProgress((prev) => Math.min(prev + 20, 100));
+        }, 1000);
+
+        const messageInterval = setInterval(() => {
+          if (messageIndex < messages.length) {
+            setGenerationStatus(messages[messageIndex]);
+            messageIndex++;
+          }
+        }, 1250);
+
+        setTimeout(() => {
+          clearInterval(progressInterval);
+          clearInterval(messageInterval);
+          setGenerationProgress(100);
+          setGenerationStatus("✅ Test generation complete!");
+
+          setTimeout(() => {
+            const generatedImageUrl = `/test-photos/generated${testPhotoNumber}_labubu${selectedLabubu}.svg`;
+            setGeneratedImage(generatedImageUrl);
+
+            fetch(generatedImageUrl)
+              .then((response) => response.blob())
+              .then((blob) => setGeneratedBlob(blob))
+              .catch(console.error);
+
+            setIsGenerating(false);
+            setGenerationProgress(0);
+            setEstimatedTime(0);
+            setGenerationStatus("");
+          }, 200);
+        }, 5000);
+
+        return;
+      }
+
+      // Real photo generation
+      if (!uploadedFile) {
+        throw new Error("No file uploaded for generation");
+      }
+
+      // Convert file to base64
       const imageBase64 = await imageUtils.fileToBase64(uploadedFile);
-      console.log(
-        `📷 Image converted to base64 (length: ${imageBase64.length})`
-      );
+      console.log(`📷 Image converted to base64`);
 
-      // Start generation
+      // Start generation and spend credit
       const response = await fetch("/api/generate", {
         method: "POST",
         headers: {
@@ -282,13 +490,29 @@ export default function LabubufyApp() {
         throw new Error(result.error || "Generation failed");
       }
 
-      console.log(`✅ Generation started successfully:`, result);
-      setCurrentPredictionId(result.prediction_id);
+      console.log(`✅ Generation started:`, result);
+      const predictionId = result.prediction_id;
+      setCurrentPredictionId(predictionId);
+
+      // NOW spend the credit AFTER successful generation start
+      try {
+        console.log(`💰 Spending 1 credit for prediction: ${predictionId}`);
+        const success = await spendCredit(predictionId);
+        if (!success) {
+          console.error("Failed to spend credit");
+        } else {
+          console.log(`✅ Credit spent. New balance: ${userCredits}`);
+        }
+      } catch (spendError) {
+        console.error("Failed to spend credit:", spendError);
+        // If credit spending fails, we should still continue with generation
+        // The webhook will handle it or user can contact support
+      }
 
       // Start polling for status
-      startPolling(result.prediction_id);
+      startPolling(predictionId);
     } catch (err) {
-      console.error("❌ Generation start error:", err);
+      console.error("❌ Generation error:", err);
       const appError = errorHandler.parseError(err);
       setError(errorHandler.getUserMessage(appError));
       setIsGenerating(false);
@@ -303,6 +527,8 @@ export default function LabubufyApp() {
   const handleCancelGeneration = () => {
     console.log(`🛑 User cancelled generation`);
     if (currentPredictionId) {
+      // Refund the credit when user cancels
+      handleRefundCredit(currentPredictionId).catch(console.error);
       stopPolling(currentPredictionId);
     }
     setIsGenerating(false);
@@ -314,8 +540,6 @@ export default function LabubufyApp() {
 
   const handleDownload = () => {
     if (!generatedBlob || selectedLabubu === null) return;
-
-    console.log(`📥 Downloading image...`);
     const filename = formatUtils.generateFilename(selectedLabubu);
     urlUtils.downloadBlob(generatedBlob, filename);
   };
@@ -324,7 +548,6 @@ export default function LabubufyApp() {
     if (!generatedBlob || selectedLabubu === null) return;
 
     try {
-      console.log(`🔗 Sharing image...`);
       const filename = sharingService.generateShareFilename(selectedLabubu);
       const result = await sharingService.shareImage(generatedBlob, filename, {
         title: "My Labubu Photo",
@@ -336,49 +559,91 @@ export default function LabubufyApp() {
       }
     } catch (error) {
       console.error("Share error:", error);
-      // Fallback to download
       handleDownload();
     }
   };
 
-
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col font-sans">
+      {/* Save Account Banner - shows for anonymous users with credits */}
+      <SaveAccountBanner onSaveClick={() => setShowSaveAccountModal(true)} />
+
       {/* Header */}
-      <header className="px-4 py-3">
-        <div className="bg-white max-w-6xl mx-auto flex items-center justify-center sm:justify-between px-2 py-3 rounded-xl">
-          <div className="hidden sm:block h-8 w-24"></div>
-          {/* <Link href="/">
-            <Button
-              variant="outline"
-              size="sm"
-              className="flex items-center gap-2 border-black text-black hover:bg-purple-50"
+      <header className="px-4 py-3 max-w-6xl mx-auto w-full flex justify-between items-center">
+        {/* Left side - Menu */}
+        <div className="w-1/4">
+          <div className="w-full flex justify-start gap-2">
+            {/* Desktop Menu Button */}
+            <Link
+              href="/"
+              className="bg-pink-400 rounded-full px-6 py-2 hidden sm:block"
             >
-              <MessageCircleQuestionMark className="h-4 w-4" />
-              More
-            </Button>
-          </Link> */}
-          <Link href="/">
-            <Image
-              src="/LabubufyLogo.png"
-              alt="Labubufy"
-              width={200}
-              height={200}
+              <h1 className="text-sm sm:text-2xl font-bold text-white">Menu</h1>
+            </Link>
+
+            {/* Mobile Menu */}
+            <MobileMenu
+              onSaveAccount={() => setShowSaveAccountModal(true)}
+              onSignIn={() => setShowSignInModal(true)}
+              onShowHistory={() => setShowHistory(true)}
+              onShowHelp={() => setShowHelpModal(true)}
+              onBuyCredits={() => setShowInsufficientCreditsModal(true)}
+              userCredits={userCredits}
             />
-          </Link>
-          <div className="hidden sm:block h-8 w-24">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowHistory(!showHistory)}
-              className=" sm:flex items-center gap-2 border-black text-black hover:bg-purple-50"
+
+            {/* Help Button (Desktop) */}
+            {/* <button
+              onClick={() => setShowHelpModal(true)}
+              className="hidden sm:flex bg-gray-200 hover:bg-gray-300 rounded-full px-4 py-2 transition-colors items-center gap-2"
+              title="Help"
             >
-              <History className="h-4 w-4" />
-              History
-            </Button>
+              <HelpCircle className="w-4 h-4 sm:w-5 sm:h-5 text-gray-700" />
+              <span className="hidden md:inline text-sm text-gray-700">
+                Help
+              </span>
+            </button> */}
+          </div>
+        </div>
+
+        {/* Center - Logo */}
+        <div className="bg-violet-600 rounded-full px-6 py-2 sm:hover:scale-105 sm:hover:-rotate-2 transition-all duration-300">
+          <Link href="/">
+            <h1 className="text-2xl sm:text-4xl font-bold text-white font-zubilo-black">
+              Labubufy!
+            </h1>
+          </Link>
+        </div>
+
+        {/* Right side - Credits & Account */}
+        <div className="w-1/4">
+          <div className="w-full flex justify-end items-center gap-2">
+            {/* Save Account button - only for anonymous users with credits (Desktop) */}
+            {/* {isAnonymous && userCredits > 0 && (
+              <Button
+                onClick={() => setShowSaveAccountModal(true)}
+                size="sm"
+                className="hidden sm:flex bg-green-600 hover:bg-green-700 text-white"
+              >
+                <Shield className="w-4 h-4 mr-1" />
+                Save
+              </Button>
+            )} */}
+
+            {/* User Credits Component */}
+            <CreditsDisplay onCreditsUpdate={handleCreditsUpdate} />
+
+            {/* Account Menu (Desktop) */}
+            <div className="hidden sm:block">
+              <AccountMenu
+                onSaveAccount={() => setShowSaveAccountModal(true)}
+                onSignIn={() => setShowSignInModal(true)}
+                onShowHistory={() => setShowHistory(true)}
+              />
+            </div>
           </div>
         </div>
       </header>
+
       {/* Error Display */}
       {error && (
         <div className="bg-red-50 border-l-4 border-red-400 p-4 mx-4 mt-4">
@@ -395,15 +660,41 @@ export default function LabubufyApp() {
           </div>
         </div>
       )}
-      {/* bg-[url('/asfalt-light.png')] */}
+
+      {/* Success message after purchase */}
+      {justPurchased && (
+        <div className="bg-green-50 border-l-4 border-green-400 p-4 mx-4 mt-4">
+          <div className="flex">
+            <div className="ml-3">
+              <p className="text-sm text-green-700">
+                ✅ Payment successful! Your credits have been added.
+              </p>
+              <button
+                onClick={() => setJustPurchased(false)}
+                className="mt-2 text-sm text-green-600 underline hover:text-green-500"
+              >
+                Dismiss
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Insufficient Credits Modal */}
+      {showInsufficientCreditsModal && (
+        <InsufficientCreditsModal
+          onClose={() => setShowInsufficientCreditsModal(false)}
+          onShowHelp={() => setShowHelpModal(true)}
+        />
+      )}
+
       {/* Main Content */}
       <div className="flex-1 p-2 sm:p-4">
-        <div className="max-w-6xl w-full mx-auto bg-white rounded-xl overflow-hidden min-h-[calc(100vh-8rem)] sm:h-[80vh]">
-          <div className="flex flex-col-reverse sm:flex-row h-full ">
+        <div className="border-3 border-zinc-900 max-w-6xl w-full mx-auto bg-zinc-50 rounded-3xl overflow-hidden min-h-[calc(100vh-8rem)] sm:h-[80vh] shadow-2xl">
+          <div className="flex flex-col-reverse sm:flex-row h-full">
             {/* Left Panel - Labubu Selection */}
-            <div className="w-full sm:w-1/2 p-3 sm:p-6  flex flex-col overflow-y-auto">
+            <div className="w-full sm:w-1/2 p-3 sm:p-6 bg-zinc-50 flex flex-col overflow-y-auto">
               <div className="w-full h-fit max-w-sm mx-auto flex-1 flex flex-col justify-center py-2">
-                {/* Labubu Selection Grid */}
                 <LabubuSelection
                   selectedLabubu={selectedLabubu}
                   onSelect={setSelectedLabubu}
@@ -413,21 +704,38 @@ export default function LabubufyApp() {
                 {/* Generate button */}
                 <div className="flex-shrink-0 mt-4">
                   <Button
-                    className="w-full bg-purple-dark hover:bg-purple-light text-white py-3 sm:py-5 text-sm sm:text-base font-medium"
+                    className="w-full bg-violet-600 hover:bg-violet-700 text-white py-3 sm:py-5 text-sm sm:text-xl font-medium font-zubilo-black disabled:opacity-100 disabled:ring-2 disabled:ring-violet-600 disabled:ring-offset-2"
                     onClick={handleGenerate}
                     disabled={
-                      !uploadedFile || selectedLabubu === null || isGenerating
+                      !uploadedImage || selectedLabubu === null || isGenerating
                     }
                   >
-                    {isGenerating ? "Generating..." : "Generate Photo"}
+                    {isGenerating ? "Labubufying..." : "Labubufy!"}
                   </Button>
+
+                  {/* Credit cost indicator */}
+                  {!isGenerating &&
+                    uploadedImage &&
+                    selectedLabubu !== null && (
+                      <div className="text-center mt-2 text-sm text-gray-600">
+                        <span className="font-medium">Cost: 1 credit</span>
+                        {userCredits > 0 ? (
+                          <span className="ml-2 text-green-600">
+                            • {userCredits} credits available
+                          </span>
+                        ) : (
+                          <span className="ml-2 text-red-600">
+                            • No credits available
+                          </span>
+                        )}
+                      </div>
+                    )}
                 </div>
               </div>
             </div>
 
             {/* Right Panel - Upload/Result */}
-            <div className="w-full sm:w-1/2 bg-white flex flex-col p-3 sm:p-6 overflow-y-auto">
-              {/* Main content area */}
+            <div className="w-full sm:w-1/2 bg-zinc-200 flex flex-col p-3 sm:p-6 overflow-y-auto">
               <div className="flex-1 flex items-center justify-center sm:min-h-[300px]">
                 {isGenerating ? (
                   <GenerationProgress
@@ -447,74 +755,128 @@ export default function LabubufyApp() {
                     onRemove={handleImageRemove}
                   />
                 ) : (
-                  <ImageUpload
-                    onImageUpload={handleImageUpload}
-                    onError={handleUploadError}
-                  />
+                  <div className="w-full">
+                    <ImageUpload
+                      onImageUpload={handleImageUpload}
+                      onError={handleUploadError}
+                    />
+                  </div>
                 )}
               </div>
 
-              {/* Bottom action buttons - only show when image is generated */}
-              {generatedImage && (
-                <div className="flex-shrink-0 mt-4 space-y-3 pb-2">
-                  <div className="flex gap-2 sm:gap-3">
-                    <Button
-                      variant="outline"
-                      className="flex-1 border-purple-dark text-purple-dark hover:bg-purple-dark hover:text-white py-2 sm:py-3 bg-white text-xs sm:text-sm"
-                      onClick={handleDownload}
-                    >
-                      <Download className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-                      Download
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className="flex-1 border-purple-dark text-purple-dark hover:bg-purple-dark hover:text-white py-2 sm:py-3 bg-white text-xs sm:text-sm"
-                      onClick={handleShare}
-                    >
-                      <Share2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-                      Share
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className="flex-1 border-purple-dark text-purple-dark hover:bg-purple-dark hover:text-white py-2 sm:py-3 bg-white text-xs sm:text-sm"
-                      onClick={() => {
-                        setGeneratedImage(null);
-                        setGeneratedBlob(null);
-                        setUploadedImage(null);
-                        setUploadedFile(null);
-                        setSelectedLabubu(null);
-                        setError(null);
-                      }}
-                    >
-                      <RefreshCcw className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-                      Reset
-                    </Button>
-                  </div>
-                  {/* <Button
-                    variant="outline"
-                    className="w-full border-black text-black hover:bg-black hover:text-white py-2 sm:py-3 bg-white text-xs sm:text-sm"
-                    onClick={() => {
-                      setGeneratedImage(null);
-                      setGeneratedBlob(null);
-                      setUploadedImage(null);
-                      setUploadedFile(null);
-                      setSelectedLabubu(null);
-                      setError(null);
-                    }}
+              {/* Action Buttons */}
+              {generatedImage && !isGenerating && (
+                <div className="flex gap-2 mt-4">
+                  <Button
+                    onClick={handleDownload}
+                    className="flex-1 bg-green-600 hover:bg-green-700 text-white"
                   >
-                    Reset
-                  </Button> */}
+                    Download
+                  </Button>
+                  <Button
+                    onClick={handleShare}
+                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                  >
+                    Share
+                  </Button>
+                </div>
+              )}
+
+              {/* Test Photos */}
+              {!uploadedImage && !isGenerating && (
+                <div className="mt-4">
+                  <TestPhotos onTestPhotoSelect={handleTestPhotoSelect} />
                 </div>
               )}
             </div>
           </div>
         </div>
       </div>
-      {/* History Gallery Modal */}
-      <HistoryGallery
-        isOpen={showHistory}
-        onClose={() => setShowHistory(false)}
+
+      {/* History Gallery */}
+      {showHistory && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-auto">
+            <HistoryGallery
+              onClose={() => setShowHistory(false)}
+              isOpen={showHistory}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Help Modal */}
+      <HelpModal
+        isOpen={showHelpModal}
+        onClose={() => setShowHelpModal(false)}
       />
+
+      {/* Save Account Modal */}
+      <SaveAccountModal
+        isOpen={showSaveAccountModal}
+        onClose={() => setShowSaveAccountModal(false)}
+        onSuccess={handleAccountSaved}
+      />
+
+      {/* Sign In Modal */}
+      <SignInModal
+        isOpen={showSignInModal}
+        onClose={() => setShowSignInModal(false)}
+        onSuccess={handleSignInSuccess}
+      />
+
+      {/* Smart Auth Prompt */}
+      <SmartAuthPrompt />
+    </div>
+  );
+}
+
+// Insufficient Credits Modal Component
+interface InsufficientCreditsModalProps {
+  onClose: () => void;
+  onShowHelp: () => void;
+}
+
+function InsufficientCreditsModal({
+  onClose,
+  onShowHelp,
+}: InsufficientCreditsModalProps) {
+  return (
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-xl max-w-md w-full p-6">
+        <div className="text-center">
+          <div className="text-6xl mb-4">😢</div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">
+            Oops! No Credits Left
+          </h2>
+          <p className="text-gray-600 mb-6">
+            You need at least 1 credit to generate an image. Purchase more
+            credits to continue creating amazing photos!
+          </p>
+
+          <div className="space-y-3">
+            <Button
+              onClick={onClose}
+              className="w-full bg-violet-600 hover:bg-violet-700 text-white py-3"
+            >
+              Buy Credits Now
+            </Button>
+            <Button onClick={onClose} variant="outline" className="w-full">
+              Maybe Later
+            </Button>
+          </div>
+
+          <button
+            onClick={() => {
+              onClose();
+              onShowHelp();
+            }}
+            className="text-sm text-gray-500 hover:text-gray-700 mt-4"
+          >
+            Learn more about credits →
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

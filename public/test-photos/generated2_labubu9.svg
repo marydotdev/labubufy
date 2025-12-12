@@ -1,0 +1,10 @@
+<svg width="400" height="400" xmlns="http://www.w3.org/2000/svg">
+  <rect width="100%" height="100%" fill="#4ecdc4"/>
+  <circle cx="200" cy="150" r="60" fill="#8b5cf6" opacity="0.8"/>
+  <circle cx="180" cy="130" r="8" fill="white"/>
+  <circle cx="220" cy="130" r="8" fill="white"/>
+  <circle cx="180" cy="130" r="4" fill="black"/>
+  <circle cx="220" cy="130" r="4" fill="black"/>
+  <path d="M 170 160 Q 200 180 230 160" stroke="black" stroke-width="3" fill="none"/>
+  <text x="50%" y="85%" font-family="Arial, sans-serif" font-size="16" fill="white" text-anchor="middle" dy=".3em">Labubu Version 2</text>
+</svg>

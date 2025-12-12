@@ -5,8 +5,10 @@
   --color-purple-dark: #5712EB;
   --color-labubu-primary: #8D60EC;
   --color-labubu-secondary: #5712EB;
+  --font-zubilo-black: "font-zubilo-black", serif;
 }
 
 html {
-  background-color: #8D60EC;
+  background-color: #fafafa;
+  overscroll-behavior: none;
 }
