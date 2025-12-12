@@ -1,14 +1,14 @@
 // app/auth/callback/route.ts
 // OAuth callback handler for social login (Google/Apple)
-import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url);
-  const code = requestUrl.searchParams.get('code');
+  const code = requestUrl.searchParams.get("code");
 
   if (code) {
     const supabase = createClient(supabaseUrl, supabaseAnonKey);
@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
     const { data, error } = await supabase.auth.exchangeCodeForSession(code);
 
     if (error) {
-      console.error('OAuth callback error:', error);
+      console.error("OAuth callback error:", error);
       return NextResponse.redirect(`${requestUrl.origin}/?error=oauth_failed`);
     }
 
@@ -36,11 +36,12 @@ export async function GET(request: NextRequest) {
 
       try {
         // Get client IP for tracking
-        const clientIP = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-                        request.headers.get('x-real-ip') ||
-                        null;
+        const clientIP =
+          request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+          request.headers.get("x-real-ip") ||
+          null;
 
-        await supabaseAdmin.rpc('ensure_user_exists', {
+        await supabaseAdmin.rpc("ensure_user_exists", {
           auth_id: data.session.user.id,
           email: data.session.user.email,
           is_anonymous: false,
@@ -48,7 +49,7 @@ export async function GET(request: NextRequest) {
           browser_fingerprint: null, // OAuth callback doesn't have fingerprint
         });
       } catch (err) {
-        console.error('Failed to ensure user record:', err);
+        console.error("Failed to ensure user record:", err);
         // Continue anyway - user is authenticated
       }
     }
@@ -60,4 +61,3 @@ export async function GET(request: NextRequest) {
   // No code parameter - redirect to home
   return NextResponse.redirect(`${requestUrl.origin}/`);
 }
-

@@ -33,7 +33,6 @@ export const useUserStore = create<UserState>()(
       isInitialized: false,
 
       initialize: async () => {
-        
         if (get().isInitialized && get().user) {
           // Already initialized, just refresh credits
           await get().refreshCredits();
@@ -43,7 +42,7 @@ export const useUserStore = create<UserState>()(
         set({ isLoading: true });
         try {
           const user = await authService.initialize();
-          
+
           set({
             user,
             credits: user.credits,
@@ -190,13 +189,12 @@ export const useUserStore = create<UserState>()(
         try {
           // Store anonymous user ID before signing in (if current user is anonymous)
           const currentUser = get().user;
-          
+
           if (currentUser?.is_anonymous && typeof window !== "undefined") {
             localStorage.setItem(
               "labubufy_anonymous_auth_id",
               currentUser.auth_id
             );
-            
           }
 
           console.log("🔐 Signing in with email:", email);
@@ -281,10 +279,9 @@ export const useUserStore = create<UserState>()(
       },
 
       signOut: async () => {
-        
         try {
           await authService.signOut();
-          
+
           get().reset();
         } catch (error) {
           console.error("Failed to sign out:", error);
